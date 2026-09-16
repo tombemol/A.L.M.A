@@ -210,6 +210,7 @@ export async function createProduct(input: CreateProductInput) {
           ...(parsed.manufacturer !== undefined
             ? { manufacturer: parsed.manufacturer }
             : {}),
+          trackingMode: parsed.trackingMode,
           identifiers: {
             create: parsed.identifiers.map((identifier) => ({
               type: identifier.type,
@@ -265,6 +266,23 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
         }
       }
 
+      if (
+        parsed.trackingMode !== undefined &&
+        parsed.trackingMode !== existing.trackingMode
+      ) {
+        const historicalMovement = await tx.stockMovementItem.findFirst({
+          where: { productId: id },
+          select: { id: true },
+        });
+        if (historicalMovement) {
+          throw new DomainError(
+            "TRACKING_MODE_LOCKED",
+            409,
+            "A rastreabilidade não pode ser alterada após a primeira movimentação de estoque",
+          );
+        }
+      }
+
       return tx.product.update({
         where: { id },
         data: {
@@ -281,6 +299,9 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
             : {}),
           ...(parsed.manufacturer !== undefined
             ? { manufacturer: parsed.manufacturer }
+            : {}),
+          ...(parsed.trackingMode !== undefined
+            ? { trackingMode: parsed.trackingMode }
             : {}),
           ...(parsed.active !== undefined ? { active: parsed.active } : {}),
         },
