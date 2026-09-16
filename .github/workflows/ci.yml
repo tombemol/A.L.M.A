@@ -50,6 +50,13 @@ jobs:
           node-version: 22
 
       - run: pnpm install --no-frozen-lockfile
+
+      - name: Capture generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnpm-lock
+          path: pnpm-lock.yaml
+
       - run: pnpm db:generate
       - run: pnpm db:migrate:deploy
       - name: Verify idempotent seed
