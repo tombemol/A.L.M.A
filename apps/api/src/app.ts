@@ -9,6 +9,15 @@ import {
 } from "./http/require-auth.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { usersRouter } from "./modules/auth/users.routes.js";
+import { categoriesRouter } from "./modules/catalog/categories.routes.js";
+import { productsRouter } from "./modules/catalog/products.routes.js";
+import { unitsRouter } from "./modules/catalog/units.routes.js";
+import { productLocationsRouter } from "./modules/locations/product-locations.routes.js";
+import {
+  storageLocationsRouter,
+  warehouseLocationsRouter,
+} from "./modules/locations/storage-locations.routes.js";
+import { warehousesRouter } from "./modules/locations/warehouses.routes.js";
 
 export const app = express();
 
@@ -22,6 +31,14 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
+
+app.use("/api/categories", categoriesRouter);
+app.use("/api/units", unitsRouter);
+app.use("/api/products", productsRouter);
+app.use("/api/products", productLocationsRouter);
+app.use("/api/warehouses", warehousesRouter);
+app.use("/api/warehouses", warehouseLocationsRouter);
+app.use("/api/locations", storageLocationsRouter);
 
 app.get(
   "/api/internal/admin-check",
