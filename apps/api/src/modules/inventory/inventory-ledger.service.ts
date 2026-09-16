@@ -204,6 +204,59 @@ async function applyInboundValuation(
   return effectiveUnitCost;
 }
 
+async function loadCurrentAverageUnitCost(
+  tx: Prisma.TransactionClient,
+  productId: string,
+) {
+  const valuation = await tx.inventoryValuation.findUnique({
+    where: { productId },
+  });
+  if (!valuation) {
+    throw new DomainError(
+      "INVENTORY_VALUATION_MISSING",
+      409,
+      "A valorização do produto não foi inicializada",
+      { productId },
+    );
+  }
+
+  return valuation.averageUnitCost;
+}
+
+async function applyOutboundValuation(
+  tx: Prisma.TransactionClient,
+  productId: string,
+  quantity: Prisma.Decimal,
+) {
+  const valuation = await tx.inventoryValuation.findUnique({
+    where: { productId },
+  });
+  if (!valuation || valuation.quantity.lessThan(quantity)) {
+    throw new DomainError(
+      "INVENTORY_VALUATION_INCONSISTENT",
+      409,
+      "A valorização do produto está inconsistente com o saldo físico",
+      { productId },
+    );
+  }
+
+  const unitCost = valuation.averageUnitCost;
+  const nextQuantity = valuation.quantity.minus(quantity);
+  const nextTotalValue = valuation.totalValue.minus(unitCost.times(quantity));
+  const isEmpty = nextQuantity.equals(0);
+
+  await tx.inventoryValuation.update({
+    where: { productId },
+    data: {
+      quantity: nextQuantity,
+      averageUnitCost: isEmpty ? new Prisma.Decimal(0) : unitCost,
+      totalValue: isEmpty ? new Prisma.Decimal(0) : nextTotalValue,
+    },
+  });
+
+  return unitCost;
+}
+
 export async function postInventoryMovement(
   actorUserId: string | null,
   input: PostInventoryMovementInput,
@@ -251,6 +304,11 @@ export async function postInventoryMovement(
             ...tracking,
             delta: quantity.negated(),
           });
+          unitCost = await applyOutboundValuation(
+            tx,
+            parsed.productId,
+            quantity,
+          );
         } else if (
           parsed.type === "TRANSFER" &&
           parsed.fromLocationId &&
@@ -268,6 +326,7 @@ export async function postInventoryMovement(
             ...tracking,
             delta: quantity,
           });
+          unitCost = await loadCurrentAverageUnitCost(tx, parsed.productId);
         }
 
         const totalCost = unitCost ? unitCost.times(quantity) : null;
