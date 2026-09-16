@@ -7,6 +7,9 @@ on:
       - "agent/**"
   pull_request:
 
+permissions:
+  contents: write
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -49,13 +52,26 @@ jobs:
         with:
           node-version: 22
 
-      - run: pnpm install --no-frozen-lockfile
+      - name: Install dependencies
+        id: install
+        shell: bash
+        run: |
+          if git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Capture generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: pnpm-lock
-          path: pnpm-lock.yaml
+      - name: Commit generated lockfile
+        if: steps.install.outputs.generated == 'true' && github.event_name == 'push'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore: add pnpm lockfile"
+          git push
 
       - run: pnpm db:generate
       - run: pnpm db:migrate:deploy
