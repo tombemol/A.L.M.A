@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0a0f18" />
-  <title>A.L.M.A. — Tablet Preview</title>
+  <title>A.L.M.A. — Demonstração para tablet</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -18,17 +18,17 @@
         </div>
       </div>
       <nav class="rail-nav">
-        <button class="nav-item is-active" data-nav="dashboard" type="button"><span class="nav-icon" aria-hidden="true">⌂</span><span>Dashboard</span></button>
+        <button class="nav-item is-active" data-nav="dashboard" type="button"><span class="nav-icon" aria-hidden="true">⌂</span><span>Visão geral</span></button>
         <button class="nav-item" data-nav="products" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Produtos</span></button>
         <button class="nav-item" data-nav="locations" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>Localizações</span></button>
-        <button class="nav-item" data-nav="scanner" type="button"><span class="nav-icon" aria-hidden="true">▣</span><span>Scanner</span></button>
+        <button class="nav-item" data-nav="scanner" type="button"><span class="nav-icon" aria-hidden="true">▣</span><span>Leitor</span></button>
       </nav>
-      <div class="rail-footer"><div class="user-badge">AR</div><div><strong>Admin Demo</strong><span>Modo demonstração</span></div></div>
+      <div class="rail-footer"><div class="user-badge">AD</div><div><strong>Administrador de demonstração</strong><span>Modo de demonstração</span></div></div>
     </aside>
 
     <main class="workspace">
       <header class="topbar">
-        <div><div class="eyebrow">A.L.M.A. · Tablet Preview</div><h1 id="page-title">Visão geral</h1></div>
+        <div><div class="eyebrow">A.L.M.A. · Demonstração para tablet</div><h1 id="page-title">Visão geral</h1></div>
         <div class="topbar-actions">
           <button class="icon-button" id="demo-status" type="button" aria-label="Status da demonstração" title="Dados de demonstração">●</button>
           <div class="clock-block"><span id="clock-time">08:24</span><small id="clock-date">16 SET</small></div>
@@ -37,8 +37,8 @@
 
       <section class="view is-active" data-view="dashboard">
         <div class="hero-card">
-          <div><span class="status-pill live">DEMO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
-          <button class="primary-action" type="button" data-nav="scanner">Abrir scanner</button>
+          <div><span class="status-pill live">DEMONSTRAÇÃO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
+          <button class="primary-action" type="button" data-nav="scanner">Abrir leitor</button>
         </div>
         <div class="kpi-grid" id="kpi-grid" aria-label="Indicadores principais"></div>
         <div class="dashboard-grid">
@@ -51,7 +51,7 @@
             <div class="alert-stack">
               <article class="alert-card warning"><span class="alert-dot"></span><div><strong>Reposição futura</strong><small>4 itens próximos do ponto de reposição.</small></div></article>
               <article class="alert-card info"><span class="alert-dot"></span><div><strong>Posição compartilhada</strong><small>C/E02/P01/03 possui 3 materiais associados.</small></div></article>
-              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Estrutura íntegra</strong><small>Todos os endereços demo possuem caminho válido.</small></div></article>
+              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Estrutura íntegra</strong><small>Todos os endereços da demonstração possuem caminho válido.</small></div></article>
             </div>
           </section>
         </div>
@@ -87,7 +87,7 @@
             <div class="scanner-head"><div><span class="eyebrow">Leitura simulada</span><h2>Identifique o material</h2></div><span class="status-pill">SEM CÂMERA REAL</span></div>
             <div class="camera-frame" aria-label="Área simulada da câmera">
               <div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div><div class="scan-line"></div>
-              <div class="camera-copy"><span class="camera-icon" aria-hidden="true">▣</span><strong>Aponte para um QR ou código de barras</strong><small>Preview: use o botão abaixo para simular uma leitura.</small></div>
+              <div class="camera-copy"><span class="camera-icon" aria-hidden="true">▣</span><strong>Aponte para um QR ou código de barras</strong><small>Demonstração: use o botão abaixo para simular uma leitura.</small></div>
             </div>
             <div class="scanner-actions"><button class="primary-action grow" type="button" id="simulate-scan">Simular leitura</button><button class="secondary-action grow" type="button" id="focus-manual">Digitar código</button></div>
             <form id="manual-scan-form" class="manual-scan-form"><label for="manual-code">Código manual</label><div class="manual-input-row"><input id="manual-code" type="text" placeholder="Ex.: ROL-6204" autocomplete="off" /><button class="secondary-action" type="submit">Resolver</button></div></form>
@@ -101,7 +101,7 @@
       <button class="nav-item is-active" data-nav="dashboard" type="button"><span aria-hidden="true">⌂</span><small>Início</small></button>
       <button class="nav-item" data-nav="products" type="button"><span aria-hidden="true">▦</span><small>Produtos</small></button>
       <button class="nav-item" data-nav="locations" type="button"><span aria-hidden="true">⌖</span><small>Locais</small></button>
-      <button class="nav-item" data-nav="scanner" type="button"><span aria-hidden="true">▣</span><small>Scanner</small></button>
+      <button class="nav-item" data-nav="scanner" type="button"><span aria-hidden="true">▣</span><small>Leitor</small></button>
     </nav>
   </div>
 
