@@ -20,6 +20,9 @@ const permissionEntries = [
   [PERMISSIONS.WITHDRAWALS_FULFILL, "Atender retiradas aprovadas"],
   [PERMISSIONS.DESTINATIONS_READ, "Consultar destinos de retirada"],
   [PERMISSIONS.DESTINATIONS_MANAGE, "Gerenciar destinos de retirada"],
+  [PERMISSIONS.ALERTS_READ, "Consultar alertas operacionais"],
+  [PERMISSIONS.ALERTS_MANAGE, "Gerenciar políticas e avaliar alertas"],
+  [PERMISSIONS.AUDIT_READ, "Consultar trilha de auditoria"],
 ] as const;
 
 const roleNames = {
@@ -44,6 +47,8 @@ const rolePermissionCodes = {
     PERMISSIONS.WITHDRAWALS_FULFILL,
     PERMISSIONS.DESTINATIONS_READ,
     PERMISSIONS.DESTINATIONS_MANAGE,
+    PERMISSIONS.ALERTS_READ,
+    PERMISSIONS.ALERTS_MANAGE,
   ],
   SOLICITANTE: [
     PERMISSIONS.CATALOG_READ,
@@ -52,6 +57,7 @@ const rolePermissionCodes = {
     PERMISSIONS.WITHDRAWALS_READ,
     PERMISSIONS.WITHDRAWALS_REQUEST,
     PERMISSIONS.DESTINATIONS_READ,
+    PERMISSIONS.ALERTS_READ,
   ],
   APROVADOR: [
     PERMISSIONS.CATALOG_READ,
@@ -60,6 +66,7 @@ const rolePermissionCodes = {
     PERMISSIONS.WITHDRAWALS_READ,
     PERMISSIONS.WITHDRAWALS_APPROVE,
     PERMISSIONS.DESTINATIONS_READ,
+    PERMISSIONS.ALERTS_READ,
   ],
 } as const;
 

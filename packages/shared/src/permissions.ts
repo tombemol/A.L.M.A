@@ -16,6 +16,9 @@ export const PERMISSIONS = {
   WITHDRAWALS_FULFILL: "withdrawals.fulfill",
   DESTINATIONS_READ: "destinations.read",
   DESTINATIONS_MANAGE: "destinations.manage",
+  ALERTS_READ: "alerts.read",
+  ALERTS_MANAGE: "alerts.manage",
+  AUDIT_READ: "audit.read",
 } as const;
 
 export type PermissionCode =

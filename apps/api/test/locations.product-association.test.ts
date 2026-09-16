@@ -6,8 +6,6 @@ import {
 } from "../src/modules/locations/product-locations.service.js";
 
 describe("associação produto-localização", () => {
-  let categoryId: string;
-  let unitId: string;
   let firstProductId: string;
   let secondProductId: string;
   let warehouseId: string;
@@ -16,6 +14,17 @@ describe("associação produto-localização", () => {
   let secondSharedId: string;
 
   beforeEach(async () => {
+    await prisma.auditLog.deleteMany();
+    await prisma.alert.deleteMany();
+    await prisma.reorderPolicy.deleteMany();
+    await prisma.approval.deleteMany();
+    await prisma.withdrawalRequest.deleteMany();
+    await prisma.stockMovementItem.deleteMany();
+    await prisma.stockMovement.deleteMany();
+    await prisma.inventoryBalance.deleteMany();
+    await prisma.inventoryValuation.deleteMany();
+    await prisma.serialItem.deleteMany();
+    await prisma.inventoryLot.deleteMany();
     await prisma.productLocation.deleteMany();
     await prisma.storageLocation.deleteMany();
     await prisma.warehouse.deleteMany();
@@ -75,8 +84,6 @@ describe("associação produto-localização", () => {
       },
     });
 
-    categoryId = category.id;
-    unitId = unit.id;
     firstProductId = firstProduct.id;
     secondProductId = secondProduct.id;
     warehouseId = warehouse.id;

@@ -1,5 +1,6 @@
 import { Prisma, prisma } from "@alma/database";
 import { DomainError } from "@alma/shared";
+import { writeAuditLog } from "../audit/audit.service.js";
 import { postInventoryMovementInTx } from "../inventory/inventory-ledger.service.js";
 import {
   createWithdrawalRequestSchema,
@@ -221,12 +222,31 @@ export async function createWithdrawalRequest(
 
   return prisma.$transaction(async (tx) => {
     const context = await validateWithdrawalContext(tx, requesterUserId, parsed);
-    return createWithdrawalRecordInTx(
+    const request = await createWithdrawalRecordInTx(
       tx,
       requesterUserId,
       parsed,
       context.requiresApproval,
     );
+
+    await writeAuditLog(tx, {
+      actorUserId: requesterUserId,
+      action: "WITHDRAWAL_REQUESTED",
+      entityType: "WithdrawalRequest",
+      entityId: request.id,
+      after: {
+        productId: parsed.productId,
+        quantity: parsed.quantity,
+        departmentId: parsed.departmentId,
+        equipmentId: parsed.equipmentId ?? null,
+        workOrderId: parsed.workOrderId ?? null,
+        fromLocationId: parsed.fromLocationId ?? null,
+        requiresApproval: request.requiresApprovalSnapshot,
+        status: request.status,
+      },
+    });
+
+    return request;
   });
 }
 
@@ -287,9 +307,20 @@ async function decideWithdrawalRequest(
       },
     });
 
-    return tx.withdrawalRequest.findUniqueOrThrow({
+    const request = await tx.withdrawalRequest.findUniqueOrThrow({
       where: { id: requestId },
     });
+
+    await writeAuditLog(tx, {
+      actorUserId: decidedByUserId,
+      action: decision === "APPROVED" ? "WITHDRAWAL_APPROVED" : "WITHDRAWAL_REJECTED",
+      entityType: "WithdrawalRequest",
+      entityId: requestId,
+      before: { status: existing.status },
+      after: { status: request.status, comment: normalizedComment ?? null },
+    });
+
+    return request;
   });
 }
 
@@ -407,6 +438,19 @@ export async function fulfillWithdrawalRequest(
           },
         });
 
+        await writeAuditLog(tx, {
+          actorUserId: fulfilledByUserId,
+          action: "WITHDRAWAL_FULFILLED",
+          entityType: "WithdrawalRequest",
+          entityId: requestId,
+          before: { status: existing.status },
+          after: {
+            status: request.status,
+            stockMovementId: movement.id,
+            fromLocationId: parsed.fromLocationId,
+          },
+        });
+
         return { request, movement };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -472,6 +516,21 @@ export async function createDirectWithdrawal(
             stockMovementId: movement.id,
             fulfilledByUserId: actorUserId,
             fulfilledAt: new Date(),
+          },
+        });
+
+        await writeAuditLog(tx, {
+          actorUserId,
+          action: "WITHDRAWAL_DIRECT",
+          entityType: "WithdrawalRequest",
+          entityId: fulfilled.id,
+          after: {
+            status: fulfilled.status,
+            productId: parsed.productId,
+            quantity: parsed.quantity,
+            departmentId: parsed.departmentId,
+            fromLocationId: parsed.fromLocationId,
+            stockMovementId: movement.id,
           },
         });
 

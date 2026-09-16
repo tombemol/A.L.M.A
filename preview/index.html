@@ -3,66 +3,105 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0f18" />
+  <meta name="theme-color" content="#0b0f12" />
+  <meta name="description" content="Demonstração operacional do A.L.M.A., sistema inteligente de almoxarifado industrial." />
   <title>A.L.M.A. — Demonstração para tablet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="side-rail" aria-label="Navegação principal">
       <div class="brand-block">
-        <div class="brand-mark" aria-hidden="true">A</div>
+        <div class="brand-mark" aria-hidden="true">AL</div>
         <div>
           <div class="brand-name">A.L.M.A.</div>
-          <div class="brand-sub">Almoxarifado inteligente</div>
+          <div class="brand-sub">CONTROLE DE ALMOXARIFADO</div>
         </div>
       </div>
+
+      <div class="rail-section-label">OPERAÇÃO</div>
       <nav class="rail-nav">
         <button class="nav-item is-active" data-nav="dashboard" type="button"><span class="nav-icon" aria-hidden="true">⌂</span><span>Visão geral</span></button>
         <button class="nav-item" data-nav="products" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Produtos</span></button>
         <button class="nav-item" data-nav="locations" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>Localizações</span></button>
         <button class="nav-item" data-nav="inventory" type="button"><span class="nav-icon" aria-hidden="true">▤</span><span>Estoque</span></button>
         <button class="nav-item" data-nav="withdrawals" type="button"><span class="nav-icon" aria-hidden="true">⇢</span><span>Retiradas</span></button>
+        <button class="nav-item nav-alerts" data-nav="alerts" type="button"><span class="nav-icon" aria-hidden="true">!</span><span>Alertas</span><span class="nav-count" id="nav-alert-count">0</span></button>
         <button class="nav-item" data-nav="scanner" type="button"><span class="nav-icon" aria-hidden="true">▣</span><span>Leitor</span></button>
       </nav>
-      <div class="rail-footer"><div class="user-badge">AD</div><div><strong>Administrador de demonstração</strong><span>Modo de demonstração</span></div></div>
+
+      <div class="rail-section-label">CONTROLE</div>
+      <nav class="rail-nav">
+        <button class="nav-item" data-nav="audit" type="button"><span class="nav-icon" aria-hidden="true">≣</span><span>Auditoria</span></button>
+      </nav>
+
+      <div class="rail-footer">
+        <div class="user-badge">AD</div>
+        <div><strong>Administrador de demonstração</strong><span>Ambiente demonstrativo</span></div>
+      </div>
     </aside>
 
     <main class="workspace">
       <header class="topbar">
-        <div><div class="eyebrow">A.L.M.A. · Demonstração para tablet</div><h1 id="page-title">Visão geral</h1></div>
+        <div>
+          <div class="eyebrow">A.L.M.A. / DEMONSTRAÇÃO PARA TABLET</div>
+          <h1 id="page-title">Visão geral</h1>
+        </div>
         <div class="topbar-actions">
-          <button class="icon-button" id="demo-status" type="button" aria-label="Status da demonstração" title="Dados de demonstração">●</button>
+          <button class="status-button" id="demo-status" type="button" aria-label="Status da demonstração" title="Dados de demonstração"><span class="status-led" aria-hidden="true"></span><span>DEMO</span></button>
           <div class="clock-block"><span id="clock-time">08:24</span><small id="clock-date">16 SET</small></div>
         </div>
       </header>
 
+      <nav class="mobile-secondary-nav" aria-label="Áreas secundárias">
+        <button type="button" data-nav="products">Produtos</button>
+        <button type="button" data-nav="locations">Locais</button>
+        <button type="button" data-nav="audit">Auditoria</button>
+      </nav>
+
       <section class="view is-active" data-view="dashboard">
-        <div class="hero-card">
-          <div><span class="status-pill live">DEMONSTRAÇÃO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços, saldos, retiradas auditáveis e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
-          <button class="primary-action" type="button" data-nav="withdrawals">Abrir retiradas</button>
+        <div class="operations-header">
+          <div class="operations-copy">
+            <div class="system-line"><span class="system-led" aria-hidden="true"></span><span>SISTEMA OPERACIONAL</span><span class="system-separator">/</span><span>FASE 1E CONCLUÍDA · 1F PRÓXIMA</span></div>
+            <h2>Operação sem adivinhação.</h2>
+            <p>Materiais, posições, saldos, retiradas, alertas e evidências na mesma interface. O que importa aparece primeiro; o resto fica quieto, como toda interface sensata deveria fazer.</p>
+          </div>
+          <div class="header-actions">
+            <button class="primary-action" type="button" data-nav="alerts">Ver alertas ativos</button>
+            <button class="secondary-action" type="button" data-nav="withdrawals">Abrir retiradas</button>
+          </div>
         </div>
-        <div class="kpi-grid" id="kpi-grid" aria-label="Indicadores principais"></div>
+
+        <div class="kpi-strip" id="kpi-grid" aria-label="Indicadores principais"></div>
+
         <div class="dashboard-grid">
           <section class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">Movimento recente</span><h3>Materiais acessados</h3></div><button class="text-button" type="button" data-nav="products">Ver catálogo</button></div>
+            <div class="panel-heading">
+              <div><span class="eyebrow">ATIVIDADE RECENTE</span><h3>Materiais acessados</h3></div>
+              <button class="text-button" type="button" data-nav="products">Abrir catálogo</button>
+            </div>
             <div id="recent-products" class="compact-list"></div>
           </section>
-          <section class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">Operação</span><h3>Alertas de demonstração</h3></div></div>
-            <div class="alert-stack">
-              <article class="alert-card warning"><span class="alert-dot"></span><div><strong>Aprovação pendente</strong><small>Há material controlado aguardando decisão.</small></div></article>
-              <article class="alert-card info"><span class="alert-dot"></span><div><strong>Posição compartilhada</strong><small>C/E02/P01/03 possui 3 materiais associados.</small></div></article>
-              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Fluxo 1D auditável</strong><small>Solicitação, decisão, atendimento e saída de estoque ficam vinculados no backend.</small></div></article>
+          <section class="panel attention-panel">
+            <div class="panel-heading">
+              <div><span class="eyebrow">ATENÇÃO OPERACIONAL</span><h3>Alertas ativos</h3></div>
+              <button class="text-button" type="button" data-nav="alerts">Ver todos</button>
             </div>
+            <div id="dashboard-alerts" class="operational-list"></div>
           </section>
         </div>
       </section>
 
       <section class="view" data-view="products" hidden>
         <div class="section-toolbar">
-          <div class="search-field"><span aria-hidden="true">⌕</span><input id="product-search" type="search" inputmode="search" placeholder="Buscar por SKU, nome, EAN ou fabricante" autocomplete="off" /></div>
-          <button class="secondary-action" type="button" id="clear-search">Limpar</button>
+          <div class="section-title"><span class="eyebrow">CATÁLOGO INDUSTRIAL</span><h2>Produtos</h2></div>
+          <div class="toolbar-actions">
+            <label class="search-field"><span aria-hidden="true">⌕</span><input id="product-search" type="search" inputmode="search" placeholder="SKU, nome, EAN ou fabricante" autocomplete="off" /></label>
+            <button class="secondary-action" type="button" id="clear-search">Limpar</button>
+          </div>
         </div>
         <div class="filter-row" aria-label="Filtros de produto">
           <button class="chip-filter is-active" type="button" data-category="all">Todos</button>
@@ -71,66 +110,96 @@
           <button class="chip-filter" type="button" data-category="EPI">EPI</button>
         </div>
         <div id="product-results-meta" class="results-meta"></div>
-        <div id="product-grid" class="product-grid"></div>
+        <div class="data-table product-table" aria-label="Catálogo de produtos">
+          <div class="table-head product-columns"><span>SKU / material</span><span>Categoria</span><span>Posição principal</span><span>Un.</span></div>
+          <div id="product-grid" class="table-body"></div>
+        </div>
       </section>
 
       <section class="view" data-view="locations" hidden>
         <div class="section-toolbar location-toolbar">
-          <div><span class="eyebrow">Mapa físico</span><h2>Endereços do almoxarifado</h2></div>
-          <label class="warehouse-picker"><span>Almoxarifado</span><select id="warehouse-select"><option value="ALM-01">ALM-01 · Principal</option><option value="ALM-02">ALM-02 · EPI</option></select></label>
+          <div class="section-title"><span class="eyebrow">MAPA FÍSICO</span><h2>Localizações</h2></div>
+          <label class="warehouse-picker"><span>ALMOXARIFADO</span><select id="warehouse-select"><option value="ALM-01">ALM-01 · Principal</option><option value="ALM-02">ALM-02 · EPI</option></select></label>
         </div>
-        <div class="location-summary" id="location-summary"></div>
+        <div class="metric-strip metric-strip-3" id="location-summary"></div>
         <div class="location-grid" id="location-grid"></div>
       </section>
 
       <section class="view" data-view="inventory" hidden>
         <div class="section-toolbar inventory-toolbar">
-          <div><span class="eyebrow">Fase 1C · Estoque transacional</span><h2>Estoque por posição</h2></div>
-          <span class="status-pill">DADOS SIMULADOS</span>
+          <div class="section-title"><span class="eyebrow">FASE 1C / ESTOQUE TRANSACIONAL</span><h2>Estoque por posição</h2></div>
+          <span class="plain-state">DADOS SIMULADOS</span>
         </div>
-        <div class="inventory-summary" id="inventory-summary" aria-label="Resumo do estoque"></div>
+        <div class="metric-strip" id="inventory-summary" aria-label="Resumo do estoque"></div>
         <div class="inventory-grid">
           <section class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">Saldo físico</span><h3>Saldos por posição</h3></div></div>
+            <div class="panel-heading"><div><span class="eyebrow">SALDO FÍSICO</span><h3>Saldos por posição</h3></div></div>
             <div id="inventory-balances" class="inventory-balance-list"></div>
           </section>
           <section class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">Ledger</span><h3>Movimentações recentes</h3></div></div>
+            <div class="panel-heading"><div><span class="eyebrow">LEDGER</span><h3>Movimentações recentes</h3></div></div>
             <div id="inventory-movements" class="movement-list"></div>
           </section>
         </div>
-        <p class="demo-note">Esta tela usa dados simulados apenas para a demonstração visual. O backend da Fase 1C possui ledger imutável, saldos por posição, transferências atômicas, rastreabilidade e custo médio.</p>
+        <p class="demo-note">Dados simulados para demonstrar a interface. O backend da Fase 1C possui ledger imutável, saldos por posição, transferências atômicas, rastreabilidade e custo médio.</p>
       </section>
 
       <section class="view" data-view="withdrawals" hidden>
         <div class="section-toolbar inventory-toolbar">
-          <div><span class="eyebrow">Fase 1D · Fluxo auditável</span><h2>Solicitações e atendimento</h2></div>
-          <span class="status-pill live">BACKEND CONCLUÍDO</span>
+          <div class="section-title"><span class="eyebrow">FASE 1D / FLUXO AUDITÁVEL</span><h2>Solicitações e atendimento</h2></div>
+          <span class="plain-state state-success">BACKEND CONCLUÍDO</span>
         </div>
-        <div class="inventory-summary" id="withdrawal-summary" aria-label="Resumo das retiradas"></div>
+        <div class="metric-strip" id="withdrawal-summary" aria-label="Resumo das retiradas"></div>
         <div class="inventory-grid">
           <section class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">Fila operacional</span><h3>Solicitações abertas</h3></div></div>
+            <div class="panel-heading"><div><span class="eyebrow">FILA OPERACIONAL</span><h3>Solicitações abertas</h3></div></div>
             <div id="withdrawal-queue" class="movement-list"></div>
           </section>
           <section class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">Rastreabilidade</span><h3>Histórico recente</h3></div></div>
+            <div class="panel-heading"><div><span class="eyebrow">RASTREABILIDADE</span><h3>Histórico recente</h3></div></div>
             <div id="withdrawal-history" class="movement-list"></div>
           </section>
         </div>
-        <p class="demo-note">Os cartões abaixo são dados simulados da demonstração. A API da Fase 1D já possui destinos estruturados, política de aprovação por produto/categoria, retirada direta segura, aprovação/rejeição, atendimento idempotente e histórico com solicitante, aprovador, almoxarife e movimentação de estoque.</p>
+        <p class="demo-note">A API da Fase 1D já possui destinos estruturados, aprovação por produto/categoria, retirada direta segura, atendimento idempotente e histórico vinculado ao movimento de estoque.</p>
+      </section>
+
+      <section class="view" data-view="alerts" hidden>
+        <div class="section-toolbar">
+          <div class="section-title"><span class="eyebrow">FASE 1E / VIGILÂNCIA OPERACIONAL</span><h2>Alertas</h2></div>
+          <span class="plain-state state-warning">DADOS SIMULADOS</span>
+        </div>
+        <div class="metric-strip" id="alert-summary" aria-label="Resumo dos alertas"></div>
+        <section class="panel panel-flush">
+          <div class="panel-heading panel-heading-padded"><div><span class="eyebrow">CONDIÇÕES ATIVAS</span><h3>Fila de atenção</h3></div><span class="list-hint">ordenada por severidade</span></div>
+          <div class="alert-table-head alert-columns"><span>Severidade / condição</span><span>Material</span><span>Leitura</span><span>Detectado</span></div>
+          <div id="alert-list" class="alert-list"></div>
+        </section>
+        <p class="demo-note">A Fase 1E gera alertas sem criar compras automaticamente. Condições resolvidas permanecem no histórico e podem recorrer sem duplicar o alerta ativo.</p>
+      </section>
+
+      <section class="view" data-view="audit" hidden>
+        <div class="section-toolbar">
+          <div class="section-title"><span class="eyebrow">FASE 1E / EVIDÊNCIA</span><h2>Auditoria</h2></div>
+          <span class="plain-state">TRILHA DEMONSTRATIVA</span>
+        </div>
+        <div class="metric-strip metric-strip-3" id="audit-summary" aria-label="Resumo da auditoria"></div>
+        <section class="panel panel-flush">
+          <div class="panel-heading panel-heading-padded"><div><span class="eyebrow">EVENTOS SENSÍVEIS</span><h3>Linha do tempo</h3></div><span class="list-hint">mais recente primeiro</span></div>
+          <div class="audit-table-head audit-columns"><span>Evento</span><span>Ator / ação</span><span>Entidade</span><span>Alteração</span></div>
+          <div id="audit-list" class="audit-list"></div>
+        </section>
       </section>
 
       <section class="view" data-view="scanner" hidden>
         <div class="scanner-layout">
           <section class="scanner-stage panel">
-            <div class="scanner-head"><div><span class="eyebrow">Leitura simulada</span><h2>Identifique o material</h2></div><span class="status-pill">SEM CÂMERA REAL</span></div>
+            <div class="scanner-head"><div><span class="eyebrow">LEITURA SIMULADA</span><h2>Identifique o material</h2></div><span class="plain-state">SEM CÂMERA REAL</span></div>
             <div class="camera-frame" aria-label="Área simulada da câmera">
               <div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div><div class="scan-line"></div>
               <div class="camera-copy"><span class="camera-icon" aria-hidden="true">▣</span><strong>Aponte para um QR ou código de barras</strong><small>Demonstração: use o botão abaixo para simular uma leitura.</small></div>
             </div>
             <div class="scanner-actions"><button class="primary-action grow" type="button" id="simulate-scan">Simular leitura</button><button class="secondary-action grow" type="button" id="focus-manual">Digitar código</button></div>
-            <form id="manual-scan-form" class="manual-scan-form"><label for="manual-code">Código manual</label><div class="manual-input-row"><input id="manual-code" type="text" placeholder="Ex.: ROL-6204" autocomplete="off" /><button class="secondary-action" type="submit">Resolver</button></div></form>
+            <form id="manual-scan-form" class="manual-scan-form"><label for="manual-code">CÓDIGO MANUAL</label><div class="manual-input-row"><input id="manual-code" type="text" placeholder="Ex.: ROL-6204" autocomplete="off" /><button class="secondary-action" type="submit">Resolver</button></div></form>
           </section>
           <aside class="scan-result panel" id="scan-result" aria-live="polite"><div class="empty-result"><span class="result-icon" aria-hidden="true">⌁</span><strong>Nenhuma leitura ainda</strong><p>Simule um código ou digite SKU/EAN para localizar o material.</p></div></aside>
         </div>
@@ -139,16 +208,16 @@
 
     <nav class="bottom-nav" aria-label="Navegação principal">
       <button class="nav-item is-active" data-nav="dashboard" type="button"><span aria-hidden="true">⌂</span><small>Início</small></button>
-      <button class="nav-item" data-nav="products" type="button"><span aria-hidden="true">▦</span><small>Produtos</small></button>
-      <button class="nav-item" data-nav="locations" type="button"><span aria-hidden="true">⌖</span><small>Locais</small></button>
       <button class="nav-item" data-nav="inventory" type="button"><span aria-hidden="true">▤</span><small>Estoque</small></button>
       <button class="nav-item" data-nav="withdrawals" type="button"><span aria-hidden="true">⇢</span><small>Retiradas</small></button>
+      <button class="nav-item" data-nav="alerts" type="button"><span aria-hidden="true">!</span><small>Alertas</small></button>
+      <button class="nav-item" data-nav="scanner" type="button"><span aria-hidden="true">▣</span><small>Leitor</small></button>
     </nav>
   </div>
 
   <dialog id="product-dialog" class="product-dialog">
     <div class="dialog-shell">
-      <div class="dialog-header"><div><span class="eyebrow">Detalhes do produto</span><h2 id="dialog-product-name">Produto</h2></div><button class="icon-button close-dialog" type="button" aria-label="Fechar detalhes">×</button></div>
+      <div class="dialog-header"><div><span class="eyebrow">DETALHES DO PRODUTO</span><h2 id="dialog-product-name">Produto</h2></div><button class="icon-button close-dialog" type="button" aria-label="Fechar detalhes">×</button></div>
       <div id="product-detail-content"></div>
     </div>
   </dialog>
