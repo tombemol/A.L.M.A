@@ -8,12 +8,26 @@ async function text(name) {
   return readFile(new URL(name, root), "utf8");
 }
 
-test("a demonstração expõe as quatro áreas principais do tablet", async () => {
+test("a demonstração expõe as cinco áreas principais do tablet", async () => {
   const html = await text("index.html");
 
-  for (const view of ["dashboard", "products", "locations", "scanner"]) {
+  for (const view of ["dashboard", "products", "locations", "inventory", "scanner"]) {
     assert.match(html, new RegExp(`data-view=\\"${view}\\"`));
   }
+});
+
+test("a área de estoque apresenta os conceitos concluídos na Fase 1C", async () => {
+  const html = await text("index.html");
+  const js = await text("app.js");
+
+  assert.match(html, />Estoque</);
+  assert.match(html, /data-view="inventory"/);
+  assert.match(js, /Saldo total/);
+  assert.match(js, /Valor estimado/);
+  assert.match(js, /Custo médio/);
+  assert.match(js, /Movimentações recentes/);
+  assert.match(js, /LOTE-2026-09/);
+  assert.match(js, /SER-ALMA-001/);
 });
 
 test("a demonstração referencia os arquivos locais de estilo e comportamento", async () => {
