@@ -62,20 +62,21 @@ enum ApprovalDecision {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  employeeCode       String?             @unique
-  username           String?             @unique
-  displayName        String
-  pinHash            String?
-  passwordHash       String?
-  active             Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  roles              UserRole[]
-  sessions           AuthSession[]
-  stockMovements     StockMovement[]
-  withdrawalRequests WithdrawalRequest[] @relation("WithdrawalRequester")
-  approvalsMade      Approval[]          @relation("ApprovalActor")
+  id                   String              @id @default(cuid())
+  employeeCode         String?             @unique
+  username             String?             @unique
+  displayName          String
+  pinHash              String?
+  passwordHash         String?
+  active               Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  roles                UserRole[]
+  sessions             AuthSession[]
+  stockMovements       StockMovement[]
+  withdrawalRequests   WithdrawalRequest[] @relation("WithdrawalRequester")
+  withdrawalsFulfilled WithdrawalRequest[] @relation("WithdrawalFulfiller")
+  approvalsMade        Approval[]          @relation("ApprovalActor")
 }
 
 model Role {
@@ -381,11 +382,13 @@ model WithdrawalRequest {
   requiresApprovalSnapshot Boolean
   notes                    String?
   stockMovementId          String?                 @unique
+  fulfilledByUserId        String?
   fulfilledAt              DateTime?
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
   product                  Product                 @relation(fields: [productId], references: [id], onDelete: Restrict)
   requester                User                    @relation("WithdrawalRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  fulfilledBy              User?                   @relation("WithdrawalFulfiller", fields: [fulfilledByUserId], references: [id], onDelete: Restrict)
   department               Department              @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   equipment                Equipment?              @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
   workOrder                WorkOrder?              @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
@@ -396,6 +399,7 @@ model WithdrawalRequest {
   @@index([status, createdAt])
   @@index([productId])
   @@index([requesterUserId])
+  @@index([fulfilledByUserId])
   @@index([departmentId])
   @@index([equipmentId])
   @@index([workOrderId])
