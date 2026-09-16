@@ -1,12 +1,10 @@
 import { Router } from "express";
-import { prisma } from "@alma/database";
 import { DomainError, PERMISSIONS } from "@alma/shared";
 import { asyncHandler } from "../../http/async-handler.js";
 import {
   requireAuth,
   requirePermission,
 } from "../../http/require-auth.js";
-import { writeAuditLog } from "../audit/audit.service.js";
 import { postInventoryMovement } from "./inventory-ledger.service.js";
 import {
   getInventoryProductSummary,
@@ -18,49 +16,11 @@ import {
   inventoryBalancesQuerySchema,
   inventoryMovementsQuerySchema,
   postInventoryMovementSchema,
-  type ParsedInventoryMovementInput,
 } from "./inventory.schemas.js";
 
 export const inventoryRouter = Router();
 
 inventoryRouter.use(requireAuth);
-
-function auditAction(type: ParsedInventoryMovementInput["type"]) {
-  if (type === "ENTRY") return "INVENTORY_ENTRY";
-  if (type === "TRANSFER") return "INVENTORY_TRANSFER";
-  if (
-    type === "ADJUSTMENT_IN" ||
-    type === "ADJUSTMENT_OUT" ||
-    type === "INVENTORY_GAIN" ||
-    type === "INVENTORY_LOSS"
-  ) {
-    return "INVENTORY_ADJUSTMENT";
-  }
-  if (type === "RETURN") return "INVENTORY_RETURN";
-  return "INVENTORY_MOVEMENT";
-}
-
-async function auditMovement(
-  actorUserId: string,
-  input: ParsedInventoryMovementInput,
-  movementId: string,
-) {
-  await writeAuditLog(prisma, {
-    actorUserId,
-    action: auditAction(input.type),
-    entityType: "StockMovement",
-    entityId: movementId,
-    after: {
-      type: input.type,
-      productId: input.productId,
-      quantity: input.quantity,
-      fromLocationId: input.fromLocationId ?? null,
-      toLocationId: input.toLocationId ?? null,
-      reason: input.reason ?? null,
-      reference: input.reference ?? null,
-    },
-  });
-}
 
 inventoryRouter.get(
   "/balances",
@@ -101,7 +61,6 @@ inventoryRouter.post(
       type: "ENTRY",
     });
     const result = await postInventoryMovement(req.authUser!.id, input);
-    await auditMovement(req.authUser!.id, input, result.movement.id);
     res.status(201).json(result);
   }),
 );
@@ -115,7 +74,6 @@ inventoryRouter.post(
       type: "TRANSFER",
     });
     const result = await postInventoryMovement(req.authUser!.id, input);
-    await auditMovement(req.authUser!.id, input, result.movement.id);
     res.status(201).json(result);
   }),
 );
@@ -130,7 +88,6 @@ inventoryRouter.post(
       type,
     });
     const result = await postInventoryMovement(req.authUser!.id, input);
-    await auditMovement(req.authUser!.id, input, result.movement.id);
     res.status(201).json(result);
   }),
 );
@@ -148,7 +105,6 @@ inventoryRouter.post(
     }
     const input = postInventoryMovementSchema.parse(req.body);
     const result = await postInventoryMovement(req.authUser!.id, input);
-    await auditMovement(req.authUser!.id, input, result.movement.id);
     res.status(201).json(result);
   }),
 );
