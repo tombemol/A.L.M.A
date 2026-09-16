@@ -62,6 +62,7 @@ CREATE TABLE "WithdrawalRequest" (
   "requiresApprovalSnapshot" BOOLEAN NOT NULL,
   "notes" TEXT,
   "stockMovementId" TEXT,
+  "fulfilledByUserId" TEXT,
   "fulfilledAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -89,6 +90,7 @@ CREATE UNIQUE INDEX "WithdrawalRequest_stockMovementId_key" ON "WithdrawalReques
 CREATE INDEX "WithdrawalRequest_status_createdAt_idx" ON "WithdrawalRequest"("status", "createdAt");
 CREATE INDEX "WithdrawalRequest_productId_idx" ON "WithdrawalRequest"("productId");
 CREATE INDEX "WithdrawalRequest_requesterUserId_idx" ON "WithdrawalRequest"("requesterUserId");
+CREATE INDEX "WithdrawalRequest_fulfilledByUserId_idx" ON "WithdrawalRequest"("fulfilledByUserId");
 CREATE INDEX "WithdrawalRequest_departmentId_idx" ON "WithdrawalRequest"("departmentId");
 CREATE INDEX "WithdrawalRequest_equipmentId_idx" ON "WithdrawalRequest"("equipmentId");
 CREATE INDEX "WithdrawalRequest_workOrderId_idx" ON "WithdrawalRequest"("workOrderId");
@@ -113,6 +115,9 @@ FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDAT
 ALTER TABLE "WithdrawalRequest"
 ADD CONSTRAINT "WithdrawalRequest_requesterUserId_fkey"
 FOREIGN KEY ("requesterUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "WithdrawalRequest"
+ADD CONSTRAINT "WithdrawalRequest_fulfilledByUserId_fkey"
+FOREIGN KEY ("fulfilledByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "WithdrawalRequest"
 ADD CONSTRAINT "WithdrawalRequest_departmentId_fkey"
 FOREIGN KEY ("departmentId") REFERENCES "Department"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
