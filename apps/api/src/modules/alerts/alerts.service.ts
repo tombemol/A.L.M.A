@@ -1,5 +1,9 @@
-import type { AlertSeverity, AlertType, Prisma } from "@prisma/client";
-import { prisma } from "@alma/database";
+import {
+  Prisma,
+  prisma,
+  type AlertSeverity,
+  type AlertType,
+} from "@alma/database";
 import { DomainError } from "@alma/shared";
 import { writeAuditLog } from "../audit/audit.service.js";
 import type { AlertListQuery, ReorderPolicyInput } from "./alerts.schemas.js";
