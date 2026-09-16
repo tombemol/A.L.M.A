@@ -24,25 +24,30 @@ function invalidParent(message: string) {
   return new DomainError("INVALID_LOCATION_PARENT", 400, message);
 }
 
-function validateShape(
+function normalizeOccupancy(
   kind: StorageLocationKind,
   occupancyMode: OccupancyMode | null | undefined,
-) {
-  if (kind === "POSITION" && !occupancyMode) {
-    throw new DomainError(
-      "INVALID_LOCATION",
-      400,
-      "Uma posição deve informar se é dedicada ou compartilhada",
-    );
+): OccupancyMode | null {
+  if (kind === "POSITION") {
+    if (!occupancyMode) {
+      throw new DomainError(
+        "INVALID_LOCATION",
+        400,
+        "Uma posição deve informar se é dedicada ou compartilhada",
+      );
+    }
+    return occupancyMode;
   }
 
-  if (kind !== "POSITION" && occupancyMode) {
+  if (occupancyMode) {
     throw new DomainError(
       "INVALID_LOCATION",
       400,
       "Somente posições podem definir modo de ocupação",
     );
   }
+
+  return null;
 }
 
 function mapLocationWriteError(error: unknown): never {
@@ -180,7 +185,7 @@ export async function createStorageLocation(
   input: CreateStorageLocationInput,
 ) {
   const parsed = createStorageLocationSchema.parse(input);
-  validateShape(parsed.kind, parsed.occupancyMode);
+  const occupancyMode = normalizeOccupancy(parsed.kind, parsed.occupancyMode);
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -199,9 +204,7 @@ export async function createStorageLocation(
           code: normalizeLocationCode(parsed.code),
           ...(parsed.name !== undefined ? { name: parsed.name } : {}),
           ...(parsed.parentId !== undefined ? { parentId: parsed.parentId } : {}),
-          ...(parsed.kind === "POSITION"
-            ? { occupancyMode: parsed.occupancyMode }
-            : { occupancyMode: null }),
+          occupancyMode,
         },
       });
     });
@@ -233,14 +236,17 @@ export async function updateStorageLocation(
       const nextKind = parsed.kind ?? existing.kind;
       const nextParentId =
         parsed.parentId !== undefined ? parsed.parentId : existing.parentId;
-      const nextOccupancyMode =
+      const requestedOccupancyMode =
         parsed.occupancyMode !== undefined
           ? parsed.occupancyMode
           : nextKind === existing.kind
             ? existing.occupancyMode
             : null;
+      const nextOccupancyMode = normalizeOccupancy(
+        nextKind,
+        requestedOccupancyMode,
+      );
 
-      validateShape(nextKind, nextOccupancyMode);
       await assertParentAllowed(
         tx,
         existing.warehouseId,
@@ -277,7 +283,7 @@ export async function updateStorageLocation(
             : { parent: { connect: { id: parsed.parentId } } }
           : {}),
         ...(parsed.kind !== undefined || parsed.occupancyMode !== undefined
-          ? { occupancyMode: nextKind === "POSITION" ? nextOccupancyMode : null }
+          ? { occupancyMode: nextOccupancyMode }
           : {}),
         ...(parsed.active !== undefined ? { active: parsed.active } : {}),
       };
