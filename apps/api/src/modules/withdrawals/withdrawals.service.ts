@@ -3,10 +3,73 @@ import { DomainError } from "@alma/shared";
 import { postInventoryMovementInTx } from "../inventory/inventory-ledger.service.js";
 import {
   createWithdrawalRequestSchema,
+  directWithdrawalSchema,
   fulfillWithdrawalRequestSchema,
   type CreateWithdrawalRequestInput,
+  type DirectWithdrawalInput,
   type FulfillWithdrawalRequestInput,
+  type WithdrawalListQuery,
 } from "./withdrawals.schemas.js";
+
+const actorSelect = {
+  id: true,
+  employeeCode: true,
+  username: true,
+  displayName: true,
+} satisfies Prisma.UserSelect;
+
+const withdrawalInclude = {
+  product: {
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      trackingMode: true,
+      requiresWithdrawalApproval: true,
+      baseUnit: true,
+      category: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          requiresWithdrawalApproval: true,
+        },
+      },
+    },
+  },
+  requester: { select: actorSelect },
+  fulfilledBy: { select: actorSelect },
+  department: true,
+  equipment: true,
+  workOrder: true,
+  fromLocation: { include: { warehouse: true } },
+  approval: {
+    include: { decidedBy: { select: actorSelect } },
+  },
+  stockMovement: {
+    include: {
+      performedBy: { select: actorSelect },
+      items: {
+        include: {
+          fromLocation: true,
+          toLocation: true,
+          lot: true,
+          serialItem: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.WithdrawalRequestInclude;
+
+type ParsedWithdrawalBase = {
+  productId: string;
+  quantity: string;
+  departmentId: string;
+  equipmentId?: string;
+  workOrderId?: string;
+  fromLocationId?: string;
+  notes?: string;
+};
 
 function notFound(message: string) {
   return new DomainError("NOT_FOUND", 404, message);
@@ -24,6 +87,132 @@ function concurrentStockUpdate() {
   );
 }
 
+async function validateWithdrawalContext(
+  tx: Prisma.TransactionClient,
+  actorUserId: string,
+  input: ParsedWithdrawalBase,
+) {
+  const actor = await tx.user.findFirst({
+    where: { id: actorUserId, active: true },
+    select: { id: true },
+  });
+  if (!actor) throw notFound("Usuário não encontrado ou inativo");
+
+  const product = await tx.product.findFirst({
+    where: { id: input.productId, active: true },
+    select: {
+      id: true,
+      requiresWithdrawalApproval: true,
+      category: {
+        select: {
+          id: true,
+          active: true,
+          requiresWithdrawalApproval: true,
+        },
+      },
+    },
+  });
+  if (!product || !product.category.active) {
+    throw notFound("Produto não encontrado ou inativo");
+  }
+
+  const department = await tx.department.findFirst({
+    where: { id: input.departmentId, active: true },
+    select: { id: true },
+  });
+  if (!department) throw notFound("Setor não encontrado ou inativo");
+
+  if (input.equipmentId) {
+    const equipment = await tx.equipment.findFirst({
+      where: { id: input.equipmentId, active: true },
+      select: { id: true, departmentId: true },
+    });
+    if (!equipment) throw notFound("Equipamento não encontrado ou inativo");
+    if (equipment.departmentId !== input.departmentId) {
+      throw invalidDestination(
+        "O equipamento informado não pertence ao setor selecionado",
+      );
+    }
+  }
+
+  if (input.workOrderId) {
+    const workOrder = await tx.workOrder.findFirst({
+      where: { id: input.workOrderId, active: true },
+      select: { id: true, departmentId: true, equipmentId: true },
+    });
+    if (!workOrder) throw notFound("Ordem de serviço não encontrada ou inativa");
+    if (workOrder.departmentId !== input.departmentId) {
+      throw invalidDestination(
+        "A ordem de serviço não pertence ao setor selecionado",
+      );
+    }
+    if (
+      input.equipmentId &&
+      workOrder.equipmentId &&
+      workOrder.equipmentId !== input.equipmentId
+    ) {
+      throw invalidDestination("A ordem de serviço pertence a outro equipamento");
+    }
+  }
+
+  if (input.fromLocationId) {
+    const location = await tx.storageLocation.findFirst({
+      where: { id: input.fromLocationId, active: true },
+      include: { warehouse: { select: { active: true } } },
+    });
+    if (!location || !location.warehouse.active) {
+      throw notFound("Localização de origem não encontrada ou inativa");
+    }
+    if (location.kind !== "POSITION") {
+      throw invalidDestination("A origem da retirada precisa ser uma posição física");
+    }
+    const association = await tx.productLocation.findUnique({
+      where: {
+        productId_locationId: {
+          productId: input.productId,
+          locationId: input.fromLocationId,
+        },
+      },
+      select: { id: true },
+    });
+    if (!association) {
+      throw new DomainError(
+        "PRODUCT_LOCATION_REQUIRED",
+        409,
+        "O produto precisa estar associado à posição escolhida",
+      );
+    }
+  }
+
+  return {
+    requiresApproval:
+      product.requiresWithdrawalApproval ||
+      product.category.requiresWithdrawalApproval,
+  };
+}
+
+async function createWithdrawalRecordInTx(
+  tx: Prisma.TransactionClient,
+  requesterUserId: string,
+  input: ParsedWithdrawalBase,
+  requiresApproval: boolean,
+) {
+  return tx.withdrawalRequest.create({
+    data: {
+      productId: input.productId,
+      quantity: new Prisma.Decimal(input.quantity),
+      requesterUserId,
+      departmentId: input.departmentId,
+      ...(input.equipmentId ? { equipmentId: input.equipmentId } : {}),
+      ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}),
+      ...(input.fromLocationId ? { fromLocationId: input.fromLocationId } : {}),
+      ...(input.notes ? { notes: input.notes } : {}),
+      requiresApprovalSnapshot: requiresApproval,
+      status: requiresApproval ? "PENDING_APPROVAL" : "APPROVED",
+    },
+  });
+}
+
 export async function createWithdrawalRequest(
   requesterUserId: string,
   input: CreateWithdrawalRequestInput,
@@ -31,114 +220,13 @@ export async function createWithdrawalRequest(
   const parsed = createWithdrawalRequestSchema.parse(input);
 
   return prisma.$transaction(async (tx) => {
-    const requester = await tx.user.findFirst({
-      where: { id: requesterUserId, active: true },
-      select: { id: true },
-    });
-    if (!requester) throw notFound("Solicitante não encontrado ou inativo");
-
-    const product = await tx.product.findFirst({
-      where: { id: parsed.productId, active: true },
-      select: {
-        id: true,
-        requiresWithdrawalApproval: true,
-        category: {
-          select: {
-            id: true,
-            active: true,
-            requiresWithdrawalApproval: true,
-          },
-        },
-      },
-    });
-    if (!product || !product.category.active) {
-      throw notFound("Produto não encontrado ou inativo");
-    }
-
-    const department = await tx.department.findFirst({
-      where: { id: parsed.departmentId, active: true },
-      select: { id: true },
-    });
-    if (!department) throw notFound("Setor não encontrado ou inativo");
-
-    if (parsed.equipmentId) {
-      const equipment = await tx.equipment.findFirst({
-        where: { id: parsed.equipmentId, active: true },
-        select: { id: true, departmentId: true },
-      });
-      if (!equipment) throw notFound("Equipamento não encontrado ou inativo");
-      if (equipment.departmentId !== parsed.departmentId) {
-        throw invalidDestination("O equipamento informado não pertence ao setor selecionado");
-      }
-    }
-
-    if (parsed.workOrderId) {
-      const workOrder = await tx.workOrder.findFirst({
-        where: { id: parsed.workOrderId, active: true },
-        select: { id: true, departmentId: true, equipmentId: true },
-      });
-      if (!workOrder) throw notFound("Ordem de serviço não encontrada ou inativa");
-      if (workOrder.departmentId !== parsed.departmentId) {
-        throw invalidDestination("A ordem de serviço não pertence ao setor selecionado");
-      }
-      if (
-        parsed.equipmentId &&
-        workOrder.equipmentId &&
-        workOrder.equipmentId !== parsed.equipmentId
-      ) {
-        throw invalidDestination("A ordem de serviço pertence a outro equipamento");
-      }
-    }
-
-    if (parsed.fromLocationId) {
-      const location = await tx.storageLocation.findFirst({
-        where: { id: parsed.fromLocationId, active: true },
-        include: { warehouse: { select: { active: true } } },
-      });
-      if (!location || !location.warehouse.active) {
-        throw notFound("Localização de origem não encontrada ou inativa");
-      }
-      if (location.kind !== "POSITION") {
-        throw invalidDestination("A origem da retirada precisa ser uma posição física");
-      }
-      const association = await tx.productLocation.findUnique({
-        where: {
-          productId_locationId: {
-            productId: parsed.productId,
-            locationId: parsed.fromLocationId,
-          },
-        },
-        select: { id: true },
-      });
-      if (!association) {
-        throw new DomainError(
-          "PRODUCT_LOCATION_REQUIRED",
-          409,
-          "O produto precisa estar associado à posição escolhida",
-        );
-      }
-    }
-
-    const requiresApproval =
-      product.requiresWithdrawalApproval ||
-      product.category.requiresWithdrawalApproval;
-
-    return tx.withdrawalRequest.create({
-      data: {
-        productId: parsed.productId,
-        quantity: new Prisma.Decimal(parsed.quantity),
-        requesterUserId,
-        departmentId: parsed.departmentId,
-        ...(parsed.equipmentId ? { equipmentId: parsed.equipmentId } : {}),
-        ...(parsed.workOrderId ? { workOrderId: parsed.workOrderId } : {}),
-        ...(parsed.fromLocationId
-          ? { fromLocationId: parsed.fromLocationId }
-          : {}),
-        ...(parsed.notes ? { notes: parsed.notes } : {}),
-        requiresApprovalSnapshot: requiresApproval,
-        status: requiresApproval ? "PENDING_APPROVAL" : "APPROVED",
-      },
-    });
+    const context = await validateWithdrawalContext(tx, requesterUserId, parsed);
+    return createWithdrawalRecordInTx(
+      tx,
+      requesterUserId,
+      parsed,
+      context.requiresApproval,
+    );
   });
 }
 
@@ -333,4 +421,120 @@ export async function fulfillWithdrawalRequest(
     }
     throw error;
   }
+}
+
+export async function createDirectWithdrawal(
+  actorUserId: string,
+  input: DirectWithdrawalInput,
+) {
+  const parsed = directWithdrawalSchema.parse(input);
+
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const context = await validateWithdrawalContext(tx, actorUserId, parsed);
+        if (context.requiresApproval) {
+          throw new DomainError(
+            "WITHDRAWAL_APPROVAL_REQUIRED",
+            409,
+            "Este material exige solicitação e aprovação antes da retirada",
+          );
+        }
+
+        const request = await tx.withdrawalRequest.create({
+          data: {
+            productId: parsed.productId,
+            quantity: new Prisma.Decimal(parsed.quantity),
+            requesterUserId: actorUserId,
+            departmentId: parsed.departmentId,
+            ...(parsed.equipmentId ? { equipmentId: parsed.equipmentId } : {}),
+            ...(parsed.workOrderId ? { workOrderId: parsed.workOrderId } : {}),
+            fromLocationId: parsed.fromLocationId,
+            ...(parsed.notes ? { notes: parsed.notes } : {}),
+            requiresApprovalSnapshot: false,
+            status: "FULFILLING",
+          },
+        });
+
+        const { movement } = await postInventoryMovementInTx(tx, actorUserId, {
+          type: "WITHDRAWAL",
+          productId: parsed.productId,
+          fromLocationId: parsed.fromLocationId,
+          quantity: parsed.quantity,
+          reference: `WITHDRAWAL_DIRECT:${request.id}`,
+          ...(parsed.tracking ? { tracking: parsed.tracking } : {}),
+        });
+
+        const fulfilled = await tx.withdrawalRequest.update({
+          where: { id: request.id },
+          data: {
+            status: "FULFILLED",
+            stockMovementId: movement.id,
+            fulfilledByUserId: actorUserId,
+            fulfilledAt: new Date(),
+          },
+        });
+
+        return { request: fulfilled, movement };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (error instanceof DomainError) throw error;
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      throw concurrentStockUpdate();
+    }
+    throw error;
+  }
+}
+
+export async function listWithdrawalRequests(query: WithdrawalListQuery) {
+  const dateFilter =
+    query.from || query.to
+      ? {
+          ...(query.from ? { gte: query.from } : {}),
+          ...(query.to ? { lte: query.to } : {}),
+        }
+      : undefined;
+
+  const where: Prisma.WithdrawalRequestWhereInput = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.productId ? { productId: query.productId } : {}),
+    ...(query.departmentId ? { departmentId: query.departmentId } : {}),
+    ...(query.requesterUserId
+      ? { requesterUserId: query.requesterUserId }
+      : {}),
+    ...(dateFilter ? { createdAt: dateFilter } : {}),
+  };
+
+  const [requests, total] = await Promise.all([
+    prisma.withdrawalRequest.findMany({
+      where,
+      include: withdrawalInclude,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+    }),
+    prisma.withdrawalRequest.count({ where }),
+  ]);
+
+  return {
+    requests,
+    total,
+    page: query.page,
+    limit: query.limit,
+    totalPages: Math.ceil(total / query.limit),
+  };
+}
+
+export async function getWithdrawalRequest(id: string) {
+  const request = await prisma.withdrawalRequest.findUnique({
+    where: { id },
+    include: withdrawalInclude,
+  });
+  if (!request) throw notFound("Solicitação de retirada não encontrada");
+  return request;
 }
