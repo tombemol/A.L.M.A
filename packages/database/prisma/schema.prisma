@@ -47,19 +47,35 @@ enum StockMovementType {
   INVENTORY_LOSS
 }
 
+enum WithdrawalRequestStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  FULFILLING
+  FULFILLED
+  CANCELLED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
 model User {
-  id             String          @id @default(cuid())
-  employeeCode   String?         @unique
-  username       String?         @unique
-  displayName    String
-  pinHash        String?
-  passwordHash   String?
-  active         Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  roles          UserRole[]
-  sessions       AuthSession[]
-  stockMovements StockMovement[]
+  id                 String              @id @default(cuid())
+  employeeCode       String?             @unique
+  username           String?             @unique
+  displayName        String
+  pinHash            String?
+  passwordHash       String?
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  roles              UserRole[]
+  sessions           AuthSession[]
+  stockMovements     StockMovement[]
+  withdrawalRequests WithdrawalRequest[] @relation("WithdrawalRequester")
+  approvalsMade      Approval[]          @relation("ApprovalActor")
 }
 
 model Role {
@@ -111,16 +127,17 @@ model AuthSession {
 }
 
 model Category {
-  id        String     @id @default(cuid())
-  code      String     @unique
-  name      String
-  parentId  String?
-  active    Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children  Category[] @relation("CategoryTree")
-  products  Product[]
+  id                         String     @id @default(cuid())
+  code                       String     @unique
+  name                       String
+  parentId                   String?
+  requiresWithdrawalApproval Boolean    @default(false)
+  active                     Boolean    @default(true)
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
+  parent                     Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children                   Category[] @relation("CategoryTree")
+  products                   Product[]
 
   @@index([parentId])
 }
@@ -139,27 +156,29 @@ model UnitOfMeasure {
 }
 
 model Product {
-  id                 String                  @id @default(cuid())
-  sku                String                  @unique
-  name               String
-  description        String?
-  categoryId         String
-  baseUnitId         String
-  manufacturer       String?
-  trackingMode       InventoryTrackingMode   @default(NONE)
-  active             Boolean                 @default(true)
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
-  category           Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  baseUnit           UnitOfMeasure           @relation("ProductBaseUnit", fields: [baseUnitId], references: [id], onDelete: Restrict)
-  identifiers        ProductIdentifier[]
-  conversions        ProductUnitConversion[]
-  locations          ProductLocation[]
-  inventoryLots      InventoryLot[]
-  serialItems        SerialItem[]
-  inventoryBalances  InventoryBalance[]
-  inventoryValuation InventoryValuation?
-  stockMovementItems StockMovementItem[]
+  id                         String                  @id @default(cuid())
+  sku                        String                  @unique
+  name                       String
+  description                String?
+  categoryId                 String
+  baseUnitId                 String
+  manufacturer               String?
+  trackingMode               InventoryTrackingMode   @default(NONE)
+  requiresWithdrawalApproval Boolean                 @default(false)
+  active                     Boolean                 @default(true)
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+  category                   Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  baseUnit                   UnitOfMeasure           @relation("ProductBaseUnit", fields: [baseUnitId], references: [id], onDelete: Restrict)
+  identifiers                ProductIdentifier[]
+  conversions                ProductUnitConversion[]
+  locations                  ProductLocation[]
+  inventoryLots              InventoryLot[]
+  serialItems                SerialItem[]
+  inventoryBalances          InventoryBalance[]
+  inventoryValuation         InventoryValuation?
+  stockMovementItems         StockMovementItem[]
+  withdrawalRequests         WithdrawalRequest[]
 
   @@index([categoryId])
   @@index([baseUnitId])
@@ -204,23 +223,24 @@ model Warehouse {
 }
 
 model StorageLocation {
-  id                    String              @id @default(cuid())
-  warehouseId           String
-  parentId              String?
-  kind                  StorageLocationKind
-  code                  String
-  name                  String?
-  occupancyMode         OccupancyMode?
-  active                Boolean             @default(true)
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  warehouse             Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  parent                StorageLocation?    @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children              StorageLocation[]   @relation("StorageLocationTree")
-  productLocations      ProductLocation[]
-  inventoryBalances     InventoryBalance[]
+  id                     String              @id @default(cuid())
+  warehouseId            String
+  parentId               String?
+  kind                   StorageLocationKind
+  code                   String
+  name                   String?
+  occupancyMode          OccupancyMode?
+  active                 Boolean             @default(true)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  warehouse              Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  parent                 StorageLocation?    @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children               StorageLocation[]   @relation("StorageLocationTree")
+  productLocations       ProductLocation[]
+  inventoryBalances      InventoryBalance[]
   stockMovementItemsFrom StockMovementItem[] @relation("MovementFromLocation")
   stockMovementItemsTo   StockMovementItem[] @relation("MovementToLocation")
+  withdrawalRequests     WithdrawalRequest[] @relation("WithdrawalSourceLocation")
 
   @@unique([warehouseId, code])
   @@index([warehouseId, kind])
@@ -243,6 +263,52 @@ model ProductLocation {
   @@index([productId, warehouseId])
   @@index([warehouseId])
   @@index([locationId])
+}
+
+model Department {
+  id                 String              @id @default(cuid())
+  code               String              @unique
+  name               String
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  equipments         Equipment[]
+  workOrders         WorkOrder[]
+  withdrawalRequests WithdrawalRequest[]
+}
+
+model Equipment {
+  id                 String              @id @default(cuid())
+  departmentId       String
+  code               String
+  name               String
+  description        String?
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  department         Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  workOrders         WorkOrder[]
+  withdrawalRequests WithdrawalRequest[]
+
+  @@unique([departmentId, code])
+  @@index([departmentId])
+}
+
+model WorkOrder {
+  id                 String              @id @default(cuid())
+  code               String              @unique
+  departmentId       String
+  equipmentId        String?
+  description        String?
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  department         Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  equipment          Equipment?          @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  withdrawalRequests WithdrawalRequest[]
+
+  @@index([departmentId])
+  @@index([equipmentId])
 }
 
 model InventoryLot {
@@ -302,6 +368,53 @@ model InventoryValuation {
   product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 }
 
+model WithdrawalRequest {
+  id                       String                  @id @default(cuid())
+  productId                String
+  quantity                 Decimal                 @db.Decimal(18, 6)
+  requesterUserId          String
+  departmentId             String
+  equipmentId              String?
+  workOrderId              String?
+  fromLocationId           String?
+  status                   WithdrawalRequestStatus @default(PENDING_APPROVAL)
+  requiresApprovalSnapshot Boolean
+  notes                    String?
+  stockMovementId          String?                 @unique
+  fulfilledAt              DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  product                  Product                 @relation(fields: [productId], references: [id], onDelete: Restrict)
+  requester                User                    @relation("WithdrawalRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  department               Department              @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  equipment                Equipment?              @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  workOrder                WorkOrder?              @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  fromLocation             StorageLocation?        @relation("WithdrawalSourceLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  stockMovement            StockMovement?          @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+  approval                 Approval?
+
+  @@index([status, createdAt])
+  @@index([productId])
+  @@index([requesterUserId])
+  @@index([departmentId])
+  @@index([equipmentId])
+  @@index([workOrderId])
+  @@index([fromLocationId])
+}
+
+model Approval {
+  id                  String            @id @default(cuid())
+  withdrawalRequestId String            @unique
+  decision            ApprovalDecision
+  decidedByUserId     String
+  comment             String?
+  createdAt           DateTime          @default(now())
+  withdrawalRequest   WithdrawalRequest @relation(fields: [withdrawalRequestId], references: [id], onDelete: Restrict)
+  decidedBy           User              @relation("ApprovalActor", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([decidedByUserId])
+}
+
 model StockMovement {
   id                String             @id @default(cuid())
   type              StockMovementType
@@ -311,6 +424,7 @@ model StockMovement {
   createdAt         DateTime           @default(now())
   performedBy       User?              @relation(fields: [performedByUserId], references: [id], onDelete: Restrict)
   items             StockMovementItem[]
+  withdrawalRequest WithdrawalRequest?
 
   @@index([type, createdAt])
   @@index([performedByUserId])
