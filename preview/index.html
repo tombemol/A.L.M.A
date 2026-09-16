@@ -22,6 +22,7 @@
         <button class="nav-item" data-nav="products" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Produtos</span></button>
         <button class="nav-item" data-nav="locations" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>Localizações</span></button>
         <button class="nav-item" data-nav="inventory" type="button"><span class="nav-icon" aria-hidden="true">▤</span><span>Estoque</span></button>
+        <button class="nav-item" data-nav="withdrawals" type="button"><span class="nav-icon" aria-hidden="true">⇢</span><span>Retiradas</span></button>
         <button class="nav-item" data-nav="scanner" type="button"><span class="nav-icon" aria-hidden="true">▣</span><span>Leitor</span></button>
       </nav>
       <div class="rail-footer"><div class="user-badge">AD</div><div><strong>Administrador de demonstração</strong><span>Modo de demonstração</span></div></div>
@@ -38,8 +39,8 @@
 
       <section class="view is-active" data-view="dashboard">
         <div class="hero-card">
-          <div><span class="status-pill live">DEMONSTRAÇÃO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços, saldos e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
-          <button class="primary-action" type="button" data-nav="scanner">Abrir leitor</button>
+          <div><span class="status-pill live">DEMONSTRAÇÃO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços, saldos, retiradas auditáveis e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
+          <button class="primary-action" type="button" data-nav="withdrawals">Abrir retiradas</button>
         </div>
         <div class="kpi-grid" id="kpi-grid" aria-label="Indicadores principais"></div>
         <div class="dashboard-grid">
@@ -50,9 +51,9 @@
           <section class="panel">
             <div class="panel-heading"><div><span class="eyebrow">Operação</span><h3>Alertas de demonstração</h3></div></div>
             <div class="alert-stack">
-              <article class="alert-card warning"><span class="alert-dot"></span><div><strong>Reposição futura</strong><small>4 itens próximos do ponto de reposição.</small></div></article>
+              <article class="alert-card warning"><span class="alert-dot"></span><div><strong>Aprovação pendente</strong><small>Há material controlado aguardando decisão.</small></div></article>
               <article class="alert-card info"><span class="alert-dot"></span><div><strong>Posição compartilhada</strong><small>C/E02/P01/03 possui 3 materiais associados.</small></div></article>
-              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Ledger íntegro</strong><small>Movimentações e saldos da Fase 1C são tratados transacionalmente no backend.</small></div></article>
+              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Fluxo 1D auditável</strong><small>Solicitação, decisão, atendimento e saída de estoque ficam vinculados no backend.</small></div></article>
             </div>
           </section>
         </div>
@@ -98,7 +99,26 @@
             <div id="inventory-movements" class="movement-list"></div>
           </section>
         </div>
-        <p class="demo-note">Esta tela usa dados simulados apenas para a demonstração visual. O backend da Fase 1C já possui ledger imutável, saldos por posição, transferências atômicas, rastreabilidade e custo médio.</p>
+        <p class="demo-note">Esta tela usa dados simulados apenas para a demonstração visual. O backend da Fase 1C possui ledger imutável, saldos por posição, transferências atômicas, rastreabilidade e custo médio.</p>
+      </section>
+
+      <section class="view" data-view="withdrawals" hidden>
+        <div class="section-toolbar inventory-toolbar">
+          <div><span class="eyebrow">Fase 1D · Fluxo auditável</span><h2>Solicitações e atendimento</h2></div>
+          <span class="status-pill live">BACKEND CONCLUÍDO</span>
+        </div>
+        <div class="inventory-summary" id="withdrawal-summary" aria-label="Resumo das retiradas"></div>
+        <div class="inventory-grid">
+          <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Fila operacional</span><h3>Solicitações abertas</h3></div></div>
+            <div id="withdrawal-queue" class="movement-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Rastreabilidade</span><h3>Histórico recente</h3></div></div>
+            <div id="withdrawal-history" class="movement-list"></div>
+          </section>
+        </div>
+        <p class="demo-note">Os cartões abaixo são dados simulados da demonstração. A API da Fase 1D já possui destinos estruturados, política de aprovação por produto/categoria, retirada direta segura, aprovação/rejeição, atendimento idempotente e histórico com solicitante, aprovador, almoxarife e movimentação de estoque.</p>
       </section>
 
       <section class="view" data-view="scanner" hidden>
@@ -122,7 +142,7 @@
       <button class="nav-item" data-nav="products" type="button"><span aria-hidden="true">▦</span><small>Produtos</small></button>
       <button class="nav-item" data-nav="locations" type="button"><span aria-hidden="true">⌖</span><small>Locais</small></button>
       <button class="nav-item" data-nav="inventory" type="button"><span aria-hidden="true">▤</span><small>Estoque</small></button>
-      <button class="nav-item" data-nav="scanner" type="button"><span aria-hidden="true">▣</span><small>Leitor</small></button>
+      <button class="nav-item" data-nav="withdrawals" type="button"><span aria-hidden="true">⇢</span><small>Retiradas</small></button>
     </nav>
   </div>
 
