@@ -8,6 +8,7 @@ import {
   requirePermission,
 } from "./http/require-auth.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
+import { usersRouter } from "./modules/auth/users.routes.js";
 
 export const app = express();
 
@@ -20,6 +21,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
 
 app.get(
   "/api/internal/admin-check",
