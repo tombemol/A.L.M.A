@@ -1,5 +1,6 @@
 import { Prisma } from "@alma/database";
 import { z } from "zod";
+import { inventoryTrackingInputSchema } from "../inventory/inventory.schemas.js";
 
 function isPositiveDecimal(value: unknown) {
   try {
@@ -25,6 +26,14 @@ export const createWithdrawalRequestSchema = z.object({
   notes: z.string().trim().min(1).max(1000).optional(),
 });
 
+export const fulfillWithdrawalRequestSchema = z.object({
+  fromLocationId: z.string().min(1, "Localização de origem é obrigatória"),
+  tracking: inventoryTrackingInputSchema.optional(),
+});
+
 export type CreateWithdrawalRequestInput = z.input<
   typeof createWithdrawalRequestSchema
+>;
+export type FulfillWithdrawalRequestInput = z.input<
+  typeof fulfillWithdrawalRequestSchema
 >;
