@@ -7,6 +7,8 @@ import {
   requireAuth,
   requirePermission,
 } from "./http/require-auth.js";
+import { alertsRouter } from "./modules/alerts/alerts.routes.js";
+import { auditRouter } from "./modules/audit/audit.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { usersRouter } from "./modules/auth/users.routes.js";
 import { categoriesRouter } from "./modules/catalog/categories.routes.js";
@@ -49,6 +51,8 @@ app.use("/api/inventory", inventoryRouter);
 app.use("/api/destinations", destinationsRouter);
 app.use("/api/withdrawal-requests", withdrawalRequestsRouter);
 app.use("/api/withdrawals", withdrawalsRouter);
+app.use("/api/alerts", alertsRouter);
+app.use("/api/audit", auditRouter);
 
 app.get(
   "/api/internal/admin-check",
