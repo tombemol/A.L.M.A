@@ -17,19 +17,19 @@ import {
 const productInclude = {
   category: true,
   baseUnit: true,
-  identifiers: { orderBy: { createdAt: "asc" as const } },
+  identifiers: { orderBy: { createdAt: "asc" } },
   conversions: {
     include: { unit: true },
-    orderBy: { unit: { code: "asc" as const } },
+    orderBy: { unitId: "asc" },
   },
   locations: {
     include: {
       warehouse: true,
       location: true,
     },
-    orderBy: [{ isPrimary: "desc" as const }, { createdAt: "asc" as const }],
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
   },
-} as const;
+} satisfies Prisma.ProductInclude;
 
 function notFound(message = "Produto não encontrado") {
   return new DomainError("NOT_FOUND", 404, message);
@@ -124,7 +124,6 @@ async function validateConversions(
 
 export async function listProducts(query: ProductListQuery = {}) {
   const search = query.q?.trim();
-  const normalizedSearch = search ? normalizeIdentifier(search) : undefined;
 
   return prisma.product.findMany({
     where: {
@@ -139,7 +138,9 @@ export async function listProducts(query: ProductListQuery = {}) {
               {
                 identifiers: {
                   some: {
-                    normalizedValue: { contains: normalizedSearch },
+                    normalizedValue: {
+                      contains: normalizeIdentifier(search),
+                    },
                   },
                 },
               },
@@ -175,7 +176,9 @@ export async function resolveProduct(identifier: string) {
     select: { productId: true },
   });
 
-  if (!extraIdentifier) throw notFound("Nenhum produto encontrado para o código informado");
+  if (!extraIdentifier) {
+    throw notFound("Nenhum produto encontrado para o código informado");
+  }
 
   const product = await prisma.product.findUnique({
     where: { id: extraIdentifier.productId },
