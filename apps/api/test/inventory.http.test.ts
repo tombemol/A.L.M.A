@@ -6,6 +6,11 @@ import { app } from "../src/app.js";
 import { hashSecret } from "../src/modules/auth/password.js";
 
 async function resetTables() {
+  await prisma.auditLog.deleteMany();
+  await prisma.alert.deleteMany();
+  await prisma.reorderPolicy.deleteMany();
+  await prisma.approval.deleteMany();
+  await prisma.withdrawalRequest.deleteMany();
   await prisma.stockMovementItem.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.inventoryBalance.deleteMany();
@@ -15,6 +20,9 @@ async function resetTables() {
   await prisma.productLocation.deleteMany();
   await prisma.storageLocation.deleteMany();
   await prisma.warehouse.deleteMany();
+  await prisma.workOrder.deleteMany();
+  await prisma.equipment.deleteMany();
+  await prisma.department.deleteMany();
   await prisma.productUnitConversion.deleteMany();
   await prisma.productIdentifier.deleteMany();
   await prisma.product.deleteMany();
