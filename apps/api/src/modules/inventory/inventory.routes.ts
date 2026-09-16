@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { PERMISSIONS } from "@alma/shared";
+import { DomainError, PERMISSIONS } from "@alma/shared";
 import { asyncHandler } from "../../http/async-handler.js";
 import {
   requireAuth,
@@ -35,7 +35,11 @@ inventoryRouter.get(
   "/products/:productId/summary",
   requirePermission(PERMISSIONS.INVENTORY_READ),
   asyncHandler(async (req, res) => {
-    res.status(200).json(await getInventoryProductSummary(req.params.productId));
+    const productId = req.params.productId;
+    if (typeof productId !== "string" || productId.length === 0) {
+      throw new DomainError("VALIDATION_ERROR", 400, "Produto é obrigatório");
+    }
+    res.status(200).json(await getInventoryProductSummary(productId));
   }),
 );
 
