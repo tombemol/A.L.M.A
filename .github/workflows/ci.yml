@@ -52,6 +52,10 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm db:generate
       - run: pnpm db:migrate:deploy
+      - name: Verify idempotent seed
+        run: |
+          pnpm db:seed
+          pnpm db:seed
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
