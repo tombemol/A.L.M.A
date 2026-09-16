@@ -56,6 +56,14 @@ export const productIdentifierTypeSchema = z.enum([
   "OTHER",
 ]);
 
+export const inventoryTrackingModeSchema = z.enum([
+  "NONE",
+  "LOT",
+  "LOT_EXPIRY",
+  "SERIAL",
+  "SERIAL_EXPIRY",
+]);
+
 export const productIdentifierInputSchema = z.object({
   type: productIdentifierTypeSchema,
   value: z.string().trim().min(1, "Identificador é obrigatório").max(200),
@@ -76,6 +84,7 @@ export const createProductSchema = z.object({
   categoryId: z.string().min(1, "Categoria é obrigatória"),
   baseUnitId: z.string().min(1, "Unidade base é obrigatória"),
   manufacturer: z.string().trim().max(160).optional(),
+  trackingMode: inventoryTrackingModeSchema.default("NONE"),
   identifiers: z.array(productIdentifierInputSchema).default([]),
   conversions: z.array(productConversionInputSchema).default([]),
 });
@@ -87,6 +96,7 @@ export const updateProductSchema = z.object({
   categoryId: z.string().min(1).optional(),
   baseUnitId: z.string().min(1).optional(),
   manufacturer: z.string().trim().max(160).nullable().optional(),
+  trackingMode: inventoryTrackingModeSchema.optional(),
   active: z.boolean().optional(),
 });
 
