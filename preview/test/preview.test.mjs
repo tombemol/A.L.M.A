@@ -22,10 +22,10 @@ test("a área de estoque apresenta os conceitos concluídos na Fase 1C", async (
 
   assert.match(html, />Estoque</);
   assert.match(html, /data-view="inventory"/);
+  assert.match(html, /Movimentações recentes/);
   assert.match(js, /Saldo total/);
   assert.match(js, /Valor estimado/);
   assert.match(js, /Custo médio/);
-  assert.match(js, /Movimentações recentes/);
   assert.match(js, /LOTE-2026-09/);
   assert.match(js, /SER-ALMA-001/);
 });
@@ -40,6 +40,7 @@ test("o CSS do tablet mantém navegação compacta e alvos de toque adequados", 
   const css = await text("styles.css");
   assert.match(css, /@media\s*\(max-width:\s*820px\)/);
   assert.match(css, /min-height:\s*44px/);
+  assert.match(css, /grid-template-columns:\s*repeat\(5,1fr\)/);
 });
 
 test("o leitor de demonstração inclui identificadores diferentes", async () => {
