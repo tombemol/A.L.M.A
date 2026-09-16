@@ -16,6 +16,7 @@ describe("rastreabilidade de estoque", () => {
   let lotProductId: string;
   let serialProductId: string;
   let locationId: string;
+  let secondLocationId: string;
 
   beforeEach(async () => {
     await resetInventoryTables();
@@ -63,6 +64,14 @@ describe("rastreabilidade de estoque", () => {
         occupancyMode: "SHARED",
       },
     });
+    const secondLocation = await prisma.storageLocation.create({
+      data: {
+        warehouseId: warehouse.id,
+        kind: "POSITION",
+        code: "R-01-02",
+        occupancyMode: "SHARED",
+      },
+    });
     await prisma.productLocation.createMany({
       data: [
         {
@@ -77,12 +86,19 @@ describe("rastreabilidade de estoque", () => {
           locationId: location.id,
           isPrimary: true,
         },
+        {
+          productId: serialProduct.id,
+          warehouseId: warehouse.id,
+          locationId: secondLocation.id,
+          isPrimary: false,
+        },
       ],
     });
 
     lotProductId = lotProduct.id;
     serialProductId = serialProduct.id;
     locationId = location.id;
+    secondLocationId = secondLocation.id;
   });
 
   afterEach(resetInventoryTables);
@@ -135,6 +151,35 @@ describe("rastreabilidade de estoque", () => {
     expect(balance.quantity.toString()).toBe("3");
     expect(valuation.quantity.toString()).toBe("3");
     expect(valuation.totalValue.toString()).toBe("21");
+  });
+
+  it("normaliza código de lote para maiúsculas e reutiliza a mesma identidade", async () => {
+    await postInventoryMovement(null, {
+      type: "ENTRY",
+      productId: lotProductId,
+      toLocationId: locationId,
+      quantity: "2",
+      unitCost: "4",
+      tracking: {
+        lotCode: "  lote-a  ",
+        expiresAt: "2027-02-28T00:00:00.000Z",
+      },
+    });
+
+    await postInventoryMovement(null, {
+      type: "WITHDRAWAL",
+      productId: lotProductId,
+      fromLocationId: locationId,
+      quantity: "1",
+      tracking: { lotCode: "LOTE-A" },
+    });
+
+    const lots = await prisma.inventoryLot.findMany({
+      where: { productId: lotProductId },
+    });
+
+    expect(lots).toHaveLength(1);
+    expect(lots[0]?.lotCode).toBe("LOTE-A");
   });
 
   it("exige validade ao criar lote quando o produto usa LOT_EXPIRY", async () => {
@@ -200,5 +245,40 @@ describe("rastreabilidade de estoque", () => {
         status: 404,
       }),
     );
+  });
+
+  it("impede o mesmo serial com saldo positivo em duas posições", async () => {
+    await postInventoryMovement(null, {
+      type: "ENTRY",
+      productId: serialProductId,
+      toLocationId: locationId,
+      quantity: "1",
+      unitCost: "300",
+      tracking: { serialNumber: "MTR-0002" },
+    });
+
+    await expect(
+      postInventoryMovement(null, {
+        type: "RETURN",
+        productId: serialProductId,
+        toLocationId: secondLocationId,
+        quantity: "1",
+        tracking: { serialNumber: "MTR-0002" },
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<DomainError>>({
+        code: "SERIAL_ALREADY_IN_STOCK",
+        status: 409,
+      }),
+    );
+
+    const positiveBalances = await prisma.inventoryBalance.findMany({
+      where: {
+        productId: serialProductId,
+        quantity: { gt: 0 },
+      },
+    });
+    expect(positiveBalances).toHaveLength(1);
+    expect(positiveBalances[0]?.locationId).toBe(locationId);
   });
 });
