@@ -32,6 +32,13 @@ export const stockMovementTypeSchema = z.enum([
   "INVENTORY_LOSS",
 ]);
 
+export const adjustmentMovementTypeSchema = z.enum([
+  "ADJUSTMENT_IN",
+  "ADJUSTMENT_OUT",
+  "INVENTORY_GAIN",
+  "INVENTORY_LOSS",
+]);
+
 export const inventoryTrackingInputSchema = z.object({
   lotCode: z.string().trim().min(1).max(120).optional(),
   serialNumber: z.string().trim().min(1).max(200).optional(),
@@ -120,11 +127,16 @@ export const inventoryBalancesQuerySchema = z.object({
   productId: z.string().min(1).optional(),
   locationId: z.string().min(1).optional(),
   warehouseId: z.string().min(1).optional(),
+  lotCode: z.string().trim().min(1).max(120).transform((value) => value.toUpperCase()).optional(),
+  serialNumber: z.string().trim().min(1).max(200).optional(),
 });
 
 export const inventoryMovementsQuerySchema = z.object({
   productId: z.string().min(1).optional(),
   type: stockMovementTypeSchema.optional(),
+  lotCode: z.string().trim().min(1).max(120).transform((value) => value.toUpperCase()).optional(),
+  serialNumber: z.string().trim().min(1).max(200).optional(),
+  page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
