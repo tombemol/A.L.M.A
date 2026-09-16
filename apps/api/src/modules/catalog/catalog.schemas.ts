@@ -23,12 +23,14 @@ export const createCategorySchema = z.object({
   code: codeSchema,
   name: z.string().trim().min(1, "Nome é obrigatório").max(120),
   parentId: z.string().min(1).nullable().optional(),
+  requiresWithdrawalApproval: z.boolean().default(false),
 });
 
 export const updateCategorySchema = z.object({
   code: codeSchema.optional(),
   name: z.string().trim().min(1).max(120).optional(),
   parentId: z.string().min(1).nullable().optional(),
+  requiresWithdrawalApproval: z.boolean().optional(),
   active: z.boolean().optional(),
 });
 
@@ -85,6 +87,7 @@ export const createProductSchema = z.object({
   baseUnitId: z.string().min(1, "Unidade base é obrigatória"),
   manufacturer: z.string().trim().max(160).optional(),
   trackingMode: inventoryTrackingModeSchema.default("NONE"),
+  requiresWithdrawalApproval: z.boolean().default(false),
   identifiers: z.array(productIdentifierInputSchema).default([]),
   conversions: z.array(productConversionInputSchema).default([]),
 });
@@ -97,6 +100,7 @@ export const updateProductSchema = z.object({
   baseUnitId: z.string().min(1).optional(),
   manufacturer: z.string().trim().max(160).nullable().optional(),
   trackingMode: inventoryTrackingModeSchema.optional(),
+  requiresWithdrawalApproval: z.boolean().optional(),
   active: z.boolean().optional(),
 });
 

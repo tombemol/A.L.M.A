@@ -211,6 +211,7 @@ export async function createProduct(input: CreateProductInput) {
             ? { manufacturer: parsed.manufacturer }
             : {}),
           trackingMode: parsed.trackingMode,
+          requiresWithdrawalApproval: parsed.requiresWithdrawalApproval,
           identifiers: {
             create: parsed.identifiers.map((identifier) => ({
               type: identifier.type,
@@ -302,6 +303,9 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
             : {}),
           ...(parsed.trackingMode !== undefined
             ? { trackingMode: parsed.trackingMode }
+            : {}),
+          ...(parsed.requiresWithdrawalApproval !== undefined
+            ? { requiresWithdrawalApproval: parsed.requiresWithdrawalApproval }
             : {}),
           ...(parsed.active !== undefined ? { active: parsed.active } : {}),
         },

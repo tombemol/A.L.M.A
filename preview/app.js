@@ -92,42 +92,10 @@ const demoLocations = [
 ];
 
 const demoInventoryBalances = [
-  {
-    productId: "rol-6204",
-    location: "ALM-01 / B / E03 / P02 / 04",
-    quantity: 18,
-    unit: "UN",
-    averageUnitCost: 14.75,
-    totalValue: 265.5,
-    tracking: "Lote LOTE-2026-09 · validade 30/09/2027",
-  },
-  {
-    productId: "dj32",
-    location: "ALM-01 / C / E02 / P01 / 03",
-    quantity: 12,
-    unit: "UN",
-    averageUnitCost: 38.2,
-    totalValue: 458.4,
-    tracking: "Sem rastreabilidade obrigatória",
-  },
-  {
-    productId: "contator-cwm18",
-    location: "ALM-01 / C / E02 / P01 / 03",
-    quantity: 1,
-    unit: "UN",
-    averageUnitCost: 128.9,
-    totalValue: 128.9,
-    tracking: "Serial SER-ALMA-001",
-  },
-  {
-    productId: "epi-luva",
-    location: "ALM-02 / A / E01 / P03 / 02",
-    quantity: 24,
-    unit: "PAR",
-    averageUnitCost: 8.4,
-    totalValue: 201.6,
-    tracking: "Lote EPI-2609",
-  },
+  { productId: "rol-6204", location: "ALM-01 / B / E03 / P02 / 04", quantity: 18, unit: "UN", averageUnitCost: 14.75, totalValue: 265.5, tracking: "Lote LOTE-2026-09 · validade 30/09/2027" },
+  { productId: "dj32", location: "ALM-01 / C / E02 / P01 / 03", quantity: 12, unit: "UN", averageUnitCost: 38.2, totalValue: 458.4, tracking: "Sem rastreabilidade obrigatória" },
+  { productId: "contator-cwm18", location: "ALM-01 / C / E02 / P01 / 03", quantity: 1, unit: "UN", averageUnitCost: 128.9, totalValue: 128.9, tracking: "Serial SER-ALMA-001" },
+  { productId: "epi-luva", location: "ALM-02 / A / E01 / P03 / 02", quantity: 24, unit: "PAR", averageUnitCost: 8.4, totalValue: 201.6, tracking: "Lote EPI-2609" },
 ];
 
 const demoMovements = [
@@ -137,11 +105,19 @@ const demoMovements = [
   { type: "Entrada", productId: "epi-luva", quantity: "+24 PAR", detail: "NF-8741 · lote EPI-2609", time: "08:31" },
 ];
 
+const demoWithdrawals = [
+  { status: "Pendente de aprovação", productId: "epi-luva", quantity: "2 PAR", department: "Manutenção", destination: "Prensa PR-07 · OS-260916-014", requester: "Carlos Lima", detail: "Material controlado · aguardando aprovador", time: "11:12" },
+  { status: "Aprovada", productId: "rol-6204", quantity: "1 UN", department: "Manutenção", destination: "Redutor RD-02", requester: "Marina Souza", detail: "Aprovada por João Costa · pronta para atendimento", time: "10:51" },
+  { status: "Atendida", productId: "dj32", quantity: "2 UN", department: "Elétrica", destination: "Painel QD-03 · OS-260916-011", requester: "Paulo Reis", detail: "Atendida por Ana Ribeiro · custo médio R$ 38,20", time: "10:20" },
+  { status: "Rejeitada", productId: "oculos-seg", quantity: "4 UN", department: "Produção", destination: "Linha 02", requester: "Rafael Melo", detail: "Rejeitada por divergência de destino", time: "09:47" },
+];
+
 const pageTitles = {
   dashboard: "Visão geral",
   products: "Catálogo de produtos",
   locations: "Localizações físicas",
   inventory: "Estoque e movimentações",
+  withdrawals: "Retiradas e aprovações",
   scanner: "Leitor de materiais",
 };
 
@@ -171,10 +147,7 @@ function escapeHtml(value) {
 }
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
 function setActiveView(viewName) {
@@ -194,10 +167,11 @@ function setActiveView(viewName) {
 
 function renderDashboard() {
   const totalValue = demoInventoryBalances.reduce((sum, item) => sum + item.totalValue, 0);
+  const pending = demoWithdrawals.filter((item) => item.status === "Pendente de aprovação").length;
   const kpis = [
     ["Produtos ativos", demoProducts.length, "▦", "Catálogo de demonstração"],
     ["Posições mapeadas", demoLocations.length, "⌖", "2 almoxarifados"],
-    ["Posições com saldo", demoInventoryBalances.length, "▤", "Fase 1C demonstrada"],
+    ["Retiradas pendentes", pending, "⇢", "Fase 1D demonstrada"],
     ["Valor demonstrado", formatCurrency(totalValue), "◇", "Custo médio por produto"],
   ];
   $("#kpi-grid").innerHTML = kpis
@@ -216,15 +190,11 @@ function productMatches(product, query) {
 
 function renderProducts(query = "") {
   const filtered = demoProducts.filter(
-    (product) =>
-      (activeCategory === "all" || product.category.startsWith(activeCategory)) &&
-      productMatches(product, query),
+    (product) => (activeCategory === "all" || product.category.startsWith(activeCategory)) && productMatches(product, query),
   );
   $("#product-results-meta").textContent = `${filtered.length} produto${filtered.length === 1 ? "" : "s"} encontrado${filtered.length === 1 ? "" : "s"}`;
   $("#product-grid").innerHTML = filtered.length
-    ? filtered
-        .map((product) => `<button class="product-card" type="button" data-product-open="${product.id}"><div class="product-card-header"><span class="sku">${escapeHtml(product.sku)}</span><span class="status-dot-label">● ${escapeHtml(product.status)}</span></div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.category)} · ${escapeHtml(product.manufacturer)}</p><div class="location-line"><span>⌖</span><span>${escapeHtml(product.primaryLocation)}</span></div></button>`)
-        .join("")
+    ? filtered.map((product) => `<button class="product-card" type="button" data-product-open="${product.id}"><div class="product-card-header"><span class="sku">${escapeHtml(product.sku)}</span><span class="status-dot-label">● ${escapeHtml(product.status)}</span></div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.category)} · ${escapeHtml(product.manufacturer)}</p><div class="location-line"><span>⌖</span><span>${escapeHtml(product.primaryLocation)}</span></div></button>`).join("")
     : `<div class="empty-state">Nenhum produto corresponde à busca ou ao filtro selecionado.</div>`;
 }
 
@@ -253,30 +223,41 @@ function renderInventory() {
   const totalValue = demoInventoryBalances.reduce((sum, item) => sum + item.totalValue, 0);
   const tracked = demoInventoryBalances.filter((item) => !item.tracking.startsWith("Sem ")).length;
   const focalCost = demoInventoryBalances.find((item) => item.productId === "rol-6204")?.averageUnitCost ?? 0;
-
   const summary = [
     ["Saldo total", totalQuantity, "Quantidades em unidades base"],
     ["Valor estimado", formatCurrency(totalValue), "Valorização da demonstração"],
     ["Custo médio", formatCurrency(focalCost), "ROL-6204 na demonstração"],
     ["Lotes / seriais", tracked, "Itens com rastreabilidade"],
   ];
-  $("#inventory-summary").innerHTML = summary
-    .map(([label, value, foot]) => `<article class="summary-card inventory-summary-card"><span>${label}</span><strong>${value}</strong><small>${foot}</small></article>`)
-    .join("");
+  $("#inventory-summary").innerHTML = summary.map(([label, value, foot]) => `<article class="summary-card inventory-summary-card"><span>${label}</span><strong>${value}</strong><small>${foot}</small></article>`).join("");
+  $("#inventory-balances").innerHTML = demoInventoryBalances.map((item) => {
+    const product = productById(item.productId);
+    return `<article class="inventory-balance"><div><span class="sku">${escapeHtml(product?.sku ?? item.productId)}</span><strong>${escapeHtml(product?.name ?? "Produto")}</strong><small>⌖ ${escapeHtml(item.location)}</small><small class="tracking-note">${escapeHtml(item.tracking)}</small><small>Custo médio ${formatCurrency(item.averageUnitCost)} · Valor ${formatCurrency(item.totalValue)}</small></div><div class="inventory-qty"><strong>${item.quantity}</strong><span>${escapeHtml(item.unit)}</span></div></article>`;
+  }).join("");
+  $("#inventory-movements").innerHTML = demoMovements.map((movement) => {
+    const product = productById(movement.productId);
+    return `<article class="movement-row"><span class="movement-type">${escapeHtml(movement.type)}</span><div><strong>${escapeHtml(product?.sku ?? movement.productId)}</strong><small>${escapeHtml(movement.detail)}</small></div><div class="movement-qty">${escapeHtml(movement.quantity)}<small>${escapeHtml(movement.time)}</small></div></article>`;
+  }).join("");
+}
 
-  $("#inventory-balances").innerHTML = demoInventoryBalances
-    .map((item) => {
-      const product = productById(item.productId);
-      return `<article class="inventory-balance"><div><span class="sku">${escapeHtml(product?.sku ?? item.productId)}</span><strong>${escapeHtml(product?.name ?? "Produto")}</strong><small>⌖ ${escapeHtml(item.location)}</small><small class="tracking-note">${escapeHtml(item.tracking)}</small><small>Custo médio ${formatCurrency(item.averageUnitCost)} · Valor ${formatCurrency(item.totalValue)}</small></div><div class="inventory-qty"><strong>${item.quantity}</strong><span>${escapeHtml(item.unit)}</span></div></article>`;
-    })
-    .join("");
+function renderWithdrawalRow(item) {
+  const product = productById(item.productId);
+  return `<article class="movement-row"><span class="movement-type">${escapeHtml(item.status)}</span><div><strong>${escapeHtml(product?.sku ?? item.productId)} · ${escapeHtml(item.department)}</strong><small>${escapeHtml(item.destination)}</small><small>${escapeHtml(item.requester)} · ${escapeHtml(item.detail)}</small></div><div class="movement-qty">${escapeHtml(item.quantity)}<small>${escapeHtml(item.time)}</small></div></article>`;
+}
 
-  $("#inventory-movements").innerHTML = demoMovements
-    .map((movement) => {
-      const product = productById(movement.productId);
-      return `<article class="movement-row"><span class="movement-type">${escapeHtml(movement.type)}</span><div><strong>${escapeHtml(product?.sku ?? movement.productId)}</strong><small>${escapeHtml(movement.detail)}</small></div><div class="movement-qty">${escapeHtml(movement.quantity)}<small>${escapeHtml(movement.time)}</small></div></article>`;
-    })
-    .join("");
+function renderWithdrawals() {
+  const pending = demoWithdrawals.filter((item) => item.status === "Pendente de aprovação").length;
+  const approved = demoWithdrawals.filter((item) => item.status === "Aprovada").length;
+  const fulfilled = demoWithdrawals.filter((item) => item.status === "Atendida").length;
+  const rejected = demoWithdrawals.filter((item) => item.status === "Rejeitada").length;
+  $("#withdrawal-summary").innerHTML = [
+    ["Pendentes", pending, "Aguardando decisão"],
+    ["Aprovadas", approved, "Prontas para atendimento"],
+    ["Atendidas", fulfilled, "Saída vinculada ao ledger"],
+    ["Rejeitadas", rejected, "Decisão preservada no histórico"],
+  ].map(([label, value, foot]) => `<article class="summary-card inventory-summary-card"><span>${label}</span><strong>${value}</strong><small>${foot}</small></article>`).join("");
+  $("#withdrawal-queue").innerHTML = demoWithdrawals.filter((item) => ["Pendente de aprovação", "Aprovada"].includes(item.status)).map(renderWithdrawalRow).join("");
+  $("#withdrawal-history").innerHTML = demoWithdrawals.filter((item) => ["Atendida", "Rejeitada"].includes(item.status)).map(renderWithdrawalRow).join("");
 }
 
 function resolveDemoIdentifier(value) {
@@ -342,12 +323,13 @@ $("#product-dialog").addEventListener("click", (event) => {
   if (event.target === event.currentTarget) event.currentTarget.close();
 });
 $("#demo-status").addEventListener("click", () =>
-  alert("Demonstração estática: os dados visuais são simulados. A API da Fase 1C já possui ledger, saldos, rastreabilidade e movimentações transacionais."),
+  alert("Demonstração estática: os dados visuais são simulados. A API da Fase 1D já possui destinos estruturados, retiradas diretas controladas, aprovações, atendimento idempotente e histórico auditável."),
 );
 
 renderDashboard();
 renderProducts();
 renderLocations();
 renderInventory();
+renderWithdrawals();
 updateClock();
 setInterval(updateClock, 30000);

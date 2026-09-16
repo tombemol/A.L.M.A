@@ -441,115 +441,112 @@ async function applyOutboundValuation(
   return unitCost;
 }
 
-export async function postInventoryMovement(
+export async function postInventoryMovementInTx(
+  tx: Prisma.TransactionClient,
   actorUserId: string | null,
   input: PostInventoryMovementInput,
 ) {
   const parsed = postInventoryMovementSchema.parse(input);
+  const locationIds = [parsed.fromLocationId, parsed.toLocationId].filter(
+    (value): value is string => Boolean(value),
+  );
+  const product = await loadMovementContext(tx, parsed.productId, locationIds);
+  const quantity = new Prisma.Decimal(parsed.quantity);
+  const tracking = await resolveTracking(
+    tx,
+    product,
+    parsed.tracking,
+    quantity,
+    inboundTypes.has(parsed.type),
+  );
+  let unitCost =
+    parsed.unitCost !== undefined ? new Prisma.Decimal(parsed.unitCost) : null;
 
+  if (inboundTypes.has(parsed.type) && parsed.toLocationId) {
+    if (parsed.type === "ENTRY" && unitCost === null) {
+      throw new DomainError(
+        "UNIT_COST_REQUIRED",
+        400,
+        "Custo unitário é obrigatório em entradas",
+      );
+    }
+    await applyBalanceDelta(tx, {
+      productId: parsed.productId,
+      locationId: parsed.toLocationId,
+      ...tracking,
+      delta: quantity,
+    });
+    unitCost = await applyInboundValuation(
+      tx,
+      parsed.productId,
+      quantity,
+      unitCost,
+    );
+  } else if (outboundTypes.has(parsed.type) && parsed.fromLocationId) {
+    await applyBalanceDelta(tx, {
+      productId: parsed.productId,
+      locationId: parsed.fromLocationId,
+      ...tracking,
+      delta: quantity.negated(),
+    });
+    unitCost = await applyOutboundValuation(tx, parsed.productId, quantity);
+  } else if (
+    parsed.type === "TRANSFER" &&
+    parsed.fromLocationId &&
+    parsed.toLocationId
+  ) {
+    await applyBalanceDelta(tx, {
+      productId: parsed.productId,
+      locationId: parsed.fromLocationId,
+      ...tracking,
+      delta: quantity.negated(),
+    });
+    await applyBalanceDelta(tx, {
+      productId: parsed.productId,
+      locationId: parsed.toLocationId,
+      ...tracking,
+      delta: quantity,
+    });
+    unitCost = await loadCurrentAverageUnitCost(tx, parsed.productId);
+  }
+
+  const totalCost = unitCost ? unitCost.times(quantity) : null;
+
+  const movement = await tx.stockMovement.create({
+    data: {
+      type: parsed.type,
+      ...(parsed.reason ? { reason: parsed.reason } : {}),
+      ...(parsed.reference ? { reference: parsed.reference } : {}),
+      ...(actorUserId ? { performedByUserId: actorUserId } : {}),
+      items: {
+        create: {
+          productId: parsed.productId,
+          ...(parsed.fromLocationId
+            ? { fromLocationId: parsed.fromLocationId }
+            : {}),
+          ...(parsed.toLocationId ? { toLocationId: parsed.toLocationId } : {}),
+          ...(tracking.lotId ? { lotId: tracking.lotId } : {}),
+          ...(tracking.serialItemId
+            ? { serialItemId: tracking.serialItemId }
+            : {}),
+          quantity,
+          ...(unitCost ? { unitCost, totalCost } : {}),
+        },
+      },
+    },
+    include: { items: true },
+  });
+
+  return { movement };
+}
+
+export async function postInventoryMovement(
+  actorUserId: string | null,
+  input: PostInventoryMovementInput,
+) {
   try {
     return await prisma.$transaction(
-      async (tx) => {
-        const locationIds = [parsed.fromLocationId, parsed.toLocationId].filter(
-          (value): value is string => Boolean(value),
-        );
-        const product = await loadMovementContext(tx, parsed.productId, locationIds);
-        const quantity = new Prisma.Decimal(parsed.quantity);
-        const tracking = await resolveTracking(
-          tx,
-          product,
-          parsed.tracking,
-          quantity,
-          inboundTypes.has(parsed.type),
-        );
-        let unitCost =
-          parsed.unitCost !== undefined
-            ? new Prisma.Decimal(parsed.unitCost)
-            : null;
-
-        if (inboundTypes.has(parsed.type) && parsed.toLocationId) {
-          if (parsed.type === "ENTRY" && unitCost === null) {
-            throw new DomainError(
-              "UNIT_COST_REQUIRED",
-              400,
-              "Custo unitário é obrigatório em entradas",
-            );
-          }
-          await applyBalanceDelta(tx, {
-            productId: parsed.productId,
-            locationId: parsed.toLocationId,
-            ...tracking,
-            delta: quantity,
-          });
-          unitCost = await applyInboundValuation(
-            tx,
-            parsed.productId,
-            quantity,
-            unitCost,
-          );
-        } else if (outboundTypes.has(parsed.type) && parsed.fromLocationId) {
-          await applyBalanceDelta(tx, {
-            productId: parsed.productId,
-            locationId: parsed.fromLocationId,
-            ...tracking,
-            delta: quantity.negated(),
-          });
-          unitCost = await applyOutboundValuation(
-            tx,
-            parsed.productId,
-            quantity,
-          );
-        } else if (
-          parsed.type === "TRANSFER" &&
-          parsed.fromLocationId &&
-          parsed.toLocationId
-        ) {
-          await applyBalanceDelta(tx, {
-            productId: parsed.productId,
-            locationId: parsed.fromLocationId,
-            ...tracking,
-            delta: quantity.negated(),
-          });
-          await applyBalanceDelta(tx, {
-            productId: parsed.productId,
-            locationId: parsed.toLocationId,
-            ...tracking,
-            delta: quantity,
-          });
-          unitCost = await loadCurrentAverageUnitCost(tx, parsed.productId);
-        }
-
-        const totalCost = unitCost ? unitCost.times(quantity) : null;
-
-        const movement = await tx.stockMovement.create({
-          data: {
-            type: parsed.type,
-            ...(parsed.reason ? { reason: parsed.reason } : {}),
-            ...(parsed.reference ? { reference: parsed.reference } : {}),
-            ...(actorUserId ? { performedByUserId: actorUserId } : {}),
-            items: {
-              create: {
-                productId: parsed.productId,
-                ...(parsed.fromLocationId
-                  ? { fromLocationId: parsed.fromLocationId }
-                  : {}),
-                ...(parsed.toLocationId
-                  ? { toLocationId: parsed.toLocationId }
-                  : {}),
-                ...(tracking.lotId ? { lotId: tracking.lotId } : {}),
-                ...(tracking.serialItemId
-                  ? { serialItemId: tracking.serialItemId }
-                  : {}),
-                quantity,
-                ...(unitCost ? { unitCost, totalCost } : {}),
-              },
-            },
-          },
-          include: { items: true },
-        });
-
-        return { movement };
-      },
+      (tx) => postInventoryMovementInTx(tx, actorUserId, input),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
   } catch (error) {

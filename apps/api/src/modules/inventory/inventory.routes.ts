@@ -96,6 +96,13 @@ inventoryRouter.post(
   "/movements",
   requirePermission(PERMISSIONS.INVENTORY_MOVE),
   asyncHandler(async (req, res) => {
+    if (req.body?.type === "WITHDRAWAL") {
+      throw new DomainError(
+        "WITHDRAWAL_REQUEST_REQUIRED",
+        409,
+        "Retiradas devem usar o fluxo de solicitações ou a retirada direta controlada",
+      );
+    }
     const input = postInventoryMovementSchema.parse(req.body);
     const result = await postInventoryMovement(req.authUser!.id, input);
     res.status(201).json(result);
