@@ -83,6 +83,7 @@ export async function createCategory(input: CreateCategoryInput) {
         code: normalizeCode(input.code),
         name: input.name.trim(),
         ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
+        requiresWithdrawalApproval: input.requiresWithdrawalApproval ?? false,
       },
     });
   } catch (error) {
@@ -108,6 +109,9 @@ export async function updateCategory(
       ? input.parentId === null
         ? { parent: { disconnect: true } }
         : { parent: { connect: { id: input.parentId } } }
+      : {}),
+    ...(input.requiresWithdrawalApproval !== undefined
+      ? { requiresWithdrawalApproval: input.requiresWithdrawalApproval }
       : {}),
     ...(input.active !== undefined ? { active: input.active } : {}),
   };
