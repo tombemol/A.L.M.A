@@ -62,4 +62,6 @@ jobs:
           pnpm db:seed
       - run: pnpm typecheck
       - run: pnpm test
+      - run: node --test preview/test/*.test.mjs
+      - run: node --check preview/app.js
       - run: pnpm build
