@@ -61,6 +61,21 @@ enum ApprovalDecision {
   REJECTED
 }
 
+enum AlertType {
+  REORDER
+  BELOW_MINIMUM
+  STOCKOUT
+  EXPIRY_NEAR
+  EXPIRED
+  FRAGMENTATION
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
 model User {
   id                   String              @id @default(cuid())
   employeeCode         String?             @unique
@@ -77,6 +92,7 @@ model User {
   withdrawalRequests   WithdrawalRequest[] @relation("WithdrawalRequester")
   withdrawalsFulfilled WithdrawalRequest[] @relation("WithdrawalFulfiller")
   approvalsMade        Approval[]          @relation("ApprovalActor")
+  auditLogs            AuditLog[]          @relation("AuditActor")
 }
 
 model Role {
@@ -180,6 +196,8 @@ model Product {
   inventoryValuation         InventoryValuation?
   stockMovementItems         StockMovementItem[]
   withdrawalRequests         WithdrawalRequest[]
+  reorderPolicy              ReorderPolicy?
+  alerts                     Alert[]
 
   @@index([categoryId])
   @@index([baseUnitId])
@@ -285,8 +303,8 @@ model Equipment {
   name               String
   description        String?
   active             Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   department         Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   workOrders         WorkOrder[]
   withdrawalRequests WithdrawalRequest[]
@@ -302,8 +320,8 @@ model WorkOrder {
   equipmentId        String?
   description        String?
   active             Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   department         Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   equipment          Equipment?          @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
   withdrawalRequests WithdrawalRequest[]
@@ -367,6 +385,36 @@ model InventoryValuation {
   totalValue      Decimal  @default(0) @db.Decimal(18, 6)
   updatedAt       DateTime @updatedAt
   product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+model ReorderPolicy {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  minimumStock      Decimal? @db.Decimal(18, 6)
+  maximumStock      Decimal? @db.Decimal(18, 6)
+  reorderPoint      Decimal? @db.Decimal(18, 6)
+  expiryWarningDays Int      @default(30)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id             String        @id @default(cuid())
+  productId      String
+  type           AlertType
+  severity       AlertSeverity
+  activeKey      String?       @unique
+  message        String
+  details        Json?
+  detectedAt     DateTime      @default(now())
+  lastDetectedAt DateTime      @default(now())
+  resolvedAt     DateTime?
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, type])
+  @@index([resolvedAt, severity])
+  @@index([lastDetectedAt])
 }
 
 model WithdrawalRequest {
@@ -459,4 +507,22 @@ model StockMovementItem {
   @@index([toLocationId])
   @@index([lotId])
   @@index([serialItemId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  before      Json?
+  after       Json?
+  context     Json?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
