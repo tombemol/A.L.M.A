@@ -123,23 +123,24 @@ test("o projeto documenta contexto de produto e design system para o Impeccable"
   assert.match(design, /sem gradientes/i);
 });
 
-test("o README registra a identidade visual e mantém a Fase 1E em andamento", async () => {
+test("o README registra a identidade visual, a Fase 1E concluída e a Fase 1F como próxima", async () => {
   const readme = await text("../README.md");
 
   assert.match(readme, /## 🧭 Visão geral/);
   assert.match(readme, /## 🏗️ Arquitetura/);
   assert.match(readme, /```mermaid/);
   assert.match(readme, /## 🗺️ Roadmap/);
-  assert.match(readme, /Fase 1A.*Concluída/);
-  assert.match(readme, /Fase 1B.*Concluída/);
-  assert.match(readme, /Fase 1C.*Concluída/);
-  assert.match(readme, /Fase 1D.*Concluída/);
-  assert.match(readme, /Fase 1E.*Em andamento/);
+  assert.match(readme, /Fases \*\*1A, 1B, 1C, 1D e 1E concluídas\*\*/);
+  assert.match(readme, /\| \*\*1E\*\* .*✅ Concluída/);
+  assert.match(readme, /\| \*\*1F\*\* .*🚧 Próxima/);
   assert.match(readme, /Industrial Control Room/);
   assert.match(readme, /Impeccable/);
   assert.match(readme, /POST \/api\/withdrawal-requests/);
   assert.match(readme, /POST \/api\/withdrawals\/direct/);
   assert.match(readme, /GET  \/api\/destinations\/departments/);
+  assert.match(readme, /GET  \/api\/alerts/);
+  assert.match(readme, /POST \/api\/alerts\/evaluate/);
+  assert.match(readme, /GET \/api\/audit/);
   assert.match(readme, /https:\/\/tombemol\.github\.io\/A\.L\.M\.A\//);
   assert.match(readme, /Demonstração para tablet/);
 });
