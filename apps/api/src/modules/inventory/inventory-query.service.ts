@@ -1,4 +1,5 @@
 import { prisma } from "@alma/database";
+import { DomainError } from "@alma/shared";
 import type {
   InventoryBalancesQuery,
   InventoryMovementsQuery,
@@ -12,6 +13,10 @@ export async function listInventoryBalances(query: InventoryBalancesQuery) {
       ...(query.locationId ? { locationId: query.locationId } : {}),
       ...(query.warehouseId
         ? { location: { warehouseId: query.warehouseId } }
+        : {}),
+      ...(query.lotCode ? { lot: { lotCode: query.lotCode } } : {}),
+      ...(query.serialNumber
+        ? { serialItem: { serialNumber: query.serialNumber } }
         : {}),
     },
     include: {
@@ -48,13 +53,53 @@ export async function listInventoryBalances(query: InventoryBalancesQuery) {
   return { balances, valuation };
 }
 
+export async function getInventoryProductSummary(productId: string) {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      trackingMode: true,
+      active: true,
+      baseUnit: {
+        select: { id: true, code: true, name: true, symbol: true },
+      },
+    },
+  });
+
+  if (!product) {
+    throw new DomainError("NOT_FOUND", 404, "Produto não encontrado");
+  }
+
+  const [{ balances }, valuation] = await Promise.all([
+    listInventoryBalances({ productId }),
+    prisma.inventoryValuation.findUnique({ where: { productId } }),
+  ]);
+
+  return {
+    product,
+    quantity: valuation?.quantity ?? "0",
+    averageUnitCost: valuation?.averageUnitCost ?? "0",
+    totalValue: valuation?.totalValue ?? "0",
+    balances,
+  };
+}
+
 export async function listInventoryMovements(query: InventoryMovementsQuery) {
+  const itemFilter = {
+    ...(query.productId ? { productId: query.productId } : {}),
+    ...(query.lotCode ? { lot: { lotCode: query.lotCode } } : {}),
+    ...(query.serialNumber
+      ? { serialItem: { serialNumber: query.serialNumber } }
+      : {}),
+  };
+  const hasItemFilter = Object.keys(itemFilter).length > 0;
+
   const movements = await prisma.stockMovement.findMany({
     where: {
       ...(query.type ? { type: query.type } : {}),
-      ...(query.productId
-        ? { items: { some: { productId: query.productId } } }
-        : {}),
+      ...(hasItemFilter ? { items: { some: itemFilter } } : {}),
     },
     include: {
       performedBy: {
@@ -87,8 +132,15 @@ export async function listInventoryMovements(query: InventoryMovementsQuery) {
       },
     },
     orderBy: { createdAt: "desc" },
+    skip: (query.page - 1) * query.limit,
     take: query.limit,
   });
 
-  return { movements };
+  return {
+    movements,
+    pagination: {
+      page: query.page,
+      limit: query.limit,
+    },
+  };
 }
