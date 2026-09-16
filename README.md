@@ -14,13 +14,13 @@
   <a href="https://tombemol.github.io/A.L.M.A/"><strong>▶ Abrir demonstração para tablet</strong></a>
 </p>
 
-> ✅ **Estado atual:** Fases **1A, 1B, 1C e 1D concluídas**. A aplicação já possui autenticação/RBAC, catálogo industrial, estrutura física de almoxarifado, estoque transacional e um fluxo auditável de retiradas com destinos estruturados, política de aprovação, atendimento idempotente e histórico operacional. A próxima etapa planejada é a **Fase 1E**, dedicada a alertas e auditoria ampliada.
+> 🚧 **Estado atual:** Fases **1A, 1B, 1C e 1D concluídas**. A **Fase 1E está em andamento**, adicionando políticas de reposição, alertas operacionais idempotentes e auditoria ampliada. A demonstração da branch da 1E também inaugura o design system **Industrial Control Room**, guiado por `PRODUCT.md`, `DESIGN.md` e pelas heurísticas do **Impeccable**.
 
 ## 🧭 Visão geral
 
 A **A.L.M.A.** nasceu para tirar o almoxarifado da clássica tecnologia industrial “acho que está naquela prateleira”. O sistema organiza usuários, produtos, endereços físicos, saldos, movimentações e retiradas com regras explícitas, autorização por papel e histórico preservado.
 
-A arquitetura segue um **monólito modular**. Catálogo, localização, autenticação, estoque, destinos e retiradas compartilham a mesma fronteira de dados e usam transações serializáveis nos fluxos que não podem tolerar meia operação salva e meia operação perdida.
+A arquitetura segue um **monólito modular**. Catálogo, localização, autenticação, estoque, destinos e retiradas compartilham a mesma fronteira de dados e usam transações serializáveis nos fluxos que não podem tolerar meia operação salva e meia operação perdida. Alertas e auditoria entram como módulos próprios na Fase 1E.
 
 ### O que já existe
 
@@ -34,30 +34,46 @@ A arquitetura segue um **monólito modular**. Catálogo, localização, autentic
 | Lote, validade e serial | ✅ Fase 1C | LOT, LOT_EXPIRY, SERIAL e SERIAL_EXPIRY |
 | Retiradas e aprovações | ✅ Fase 1D | Solicitação, aprovação/rejeição, atendimento e retirada direta segura |
 | Destinos e histórico | ✅ Fase 1D | Setor, equipamento, OS, solicitante, aprovador, almoxarife e movimento vinculado |
-| Alertas e auditoria | ⏳ Fase 1E | Alertas operacionais e trilha de auditoria ampliada |
+| Alertas e auditoria | 🚧 Fase 1E | Reposição, ruptura, validade, fragmentação e trilha auditável em implementação |
 | Frontend operacional completo | ⏳ Fase 1F | Fluxos finais integrados à API |
 | Visão computacional | 🔭 Futuro | Identificação assistida por câmera e reconhecimento facial complementar |
 
 ## 🖥️ Demonstração para tablet
 
-A pasta [`preview/`](./preview/) contém uma demonstração estática, responsiva e totalmente em pt-BR. Ela representa a interface operacional pensada para uso em tablet.
+A pasta [`preview/`](./preview/) contém uma demonstração estática, responsiva e totalmente em pt-BR. Ela representa a interface operacional pensada para uso em tablet e funciona como contrato visual da futura aplicação React da Fase 1F.
 
-A demonstração atual possui seis áreas:
+A demonstração da Fase 1E possui oito áreas:
 
-- **Visão geral** com indicadores operacionais;
-- **Produtos** com busca, filtros e ficha técnica;
+- **Visão geral** com faixa de indicadores e condições ativas;
+- **Produtos** em lista comparável com busca, filtros e ficha técnica;
 - **Localizações** com posições dedicadas e compartilhadas;
 - **Estoque** com saldos por posição, valor estimado, custo médio, lote/serial e movimentações recentes;
 - **Retiradas** com fila de aprovação, atendimento e histórico operacional simulados;
+- **Alertas** com ruptura, reposição, validade próxima e fragmentação;
+- **Auditoria** com ator, ação, entidade, identificador e resumo da alteração;
 - **Leitor** com simulação de SKU e código de barras.
 
-> Os dados do Pages são demonstrativos. O backend das Fases 1C e 1D implementa as regras transacionais reais de estoque e retirada.
+> Os dados do Pages são demonstrativos. As regras transacionais reais vivem na API. Enquanto a 1E estiver em branch, o Pages da `main` continua sendo a última fase integrada e revisada.
 
 A versão pública é publicada automaticamente a partir da `main`:
 
 **https://tombemol.github.io/A.L.M.A/**
 
-O Pages funciona como vitrine da última fase fechada e revisada. Trabalho em andamento permanece em branches de desenvolvimento até passar pelo CI e ser integrado.
+## 🎛️ Identidade visual
+
+A interface usa o design system **Industrial Control Room**: superfícies grafite, tipografia IBM Plex, códigos em fonte monoespaçada, raios pequenos e cor com função semântica.
+
+Princípios principais:
+
+- hierarquia por tipografia, contraste, divisores e espaço;
+- âmbar para ação/atenção operacional;
+- vermelho, verde e azul reservados para significado real;
+- sem gradientes decorativos, glow ou glassmorphism;
+- listas densas para dados comparáveis em vez de grades de cartões genéricos;
+- alvos de toque de pelo menos 44 px nos fluxos principais;
+- interface desenhada para ambiente industrial e tablet.
+
+As fontes de verdade são [`PRODUCT.md`](./PRODUCT.md) e [`DESIGN.md`](./DESIGN.md). O **Impeccable** é usado como referência e detector auxiliar de anti-padrões visuais; ele complementa, não substitui, revisão humana e acessibilidade.
 
 ## 🏗️ Arquitetura
 
@@ -70,13 +86,18 @@ flowchart LR
   API --> INV[Estoque transacional]
   API --> DEST[Destinos estruturados]
   API --> WD[Retiradas + aprovações]
+  API --> ALT[Alertas / Fase 1E]
+  API --> AUD[Auditoria / Fase 1E]
   AUTH --> DB[(PostgreSQL)]
   CAT --> DB
   LOC --> DB
   DEST --> DB
   INV --> DB
   WD --> DB
+  ALT --> DB
+  AUD --> DB
   WD --> INV
+  ALT --> INV
   INV --> LEDGER[Ledger imutável]
   INV --> BAL[Saldos por posição]
   INV --> VAL[Custo médio / valorização]
@@ -93,6 +114,8 @@ A.L.M.A/
 │   ├── database/     # Prisma + PostgreSQL
 │   └── shared/       # contratos, erros e permissões compartilhadas
 ├── preview/          # demonstração estática para tablet
+├── PRODUCT.md        # contexto de produto e usuários
+├── DESIGN.md         # design system Industrial Control Room
 └── docs/             # especificações e planos de implementação
 ```
 
@@ -177,6 +200,37 @@ POST /api/destinations/work-orders
 PATCH /api/destinations/work-orders/:id
 ```
 
+## 🚨 Fase 1E: alertas e auditoria
+
+A Fase 1E está sendo construída sobre os saldos, lotes, seriais e movimentos já existentes. O objetivo é transformar condições de estoque em atenção operacional sem automatizar compras.
+
+Escopo planejado:
+
+```text
+ReorderPolicy
+├── estoque mínimo
+├── estoque máximo
+├── ponto de reposição
+└── janela de validade próxima
+
+Alert
+├── REORDER
+├── BELOW_MINIMUM
+├── STOCKOUT
+├── EXPIRY_NEAR
+├── EXPIRED
+└── FRAGMENTATION
+
+AuditLog
+├── ator
+├── ação
+├── entidade / id
+├── before / after
+└── contexto técnico seguro
+```
+
+Alertas ativos usam chave idempotente; ao resolver a condição, o histórico permanece e a chave é liberada para permitir uma recorrência futura.
+
 ## 🔐 Autenticação e permissões
 
 Operadores entram com matrícula/código e PIN. Administradores usam usuário e senha. As credenciais são armazenadas com hash seguro e as sessões usam cookie `HttpOnly`.
@@ -188,7 +242,7 @@ GET  /api/auth/me
 POST /api/auth/logout
 ```
 
-Permissões principais disponíveis:
+Permissões concluídas:
 
 ```text
 catalog.read
@@ -205,6 +259,14 @@ withdrawals.approve
 withdrawals.fulfill
 ```
 
+Permissões previstas na 1E:
+
+```text
+alerts.read
+alerts.manage
+audit.read
+```
+
 ## 🗺️ Roadmap
 
 | Fase | Escopo | Estado |
@@ -213,7 +275,7 @@ withdrawals.fulfill
 | **Fase 1B** | Catálogo, produtos, almoxarifados e localizações | ✅ Concluída |
 | **Fase 1C** | Estoque, ledger, transferências, rastreabilidade e custos | ✅ Concluída |
 | **Fase 1D** | Retiradas, destinos, aprovações e histórico | ✅ Concluída |
-| **Fase 1E** | Alertas e auditoria | 🚧 Próxima |
+| **Fase 1E** | Alertas, auditoria e contrato visual operacional | 🚧 Em andamento |
 | **Fase 1F** | Frontend operacional completo | ⏳ Planejada |
 
 ## 🧰 Tecnologias
@@ -228,6 +290,7 @@ withdrawals.fulfill
 - **Docker Compose** para desenvolvimento local
 - **GitHub Actions** para integração contínua
 - **GitHub Pages** para a demonstração pública
+- **Impeccable** como detector auxiliar de anti-padrões de interface
 
 ## 📚 APIs de catálogo e localização
 
@@ -288,20 +351,23 @@ O seed é idempotente e a senha permanece fora do repositório.
 
 ## 🧪 Qualidade
 
-O CI executa geração do Prisma, migrations, seed idempotente, verificação de tipos, testes de backend, testes da demonstração, validação sintática do JavaScript e build.
+O CI executa geração do Prisma, migrations, seed idempotente, verificação de tipos, testes de backend, testes da demonstração, validação sintática do JavaScript e build. A Fase 1E adicionará o detector do Impeccable ao mesmo gate antes de ser integrada.
 
 ```bash
 pnpm typecheck
 pnpm test
 node --test preview/test/*.test.mjs
 node --check preview/app.js
+npx impeccable detect preview/
 pnpm build
 ```
 
-A suíte cobre autenticação/RBAC, catálogo, localização, estoque negativo, concorrência, custo médio, transferência atômica, lote/serial, política de aprovação, decisões únicas, atendimento idempotente, rollback por falta de saldo, retirada direta, histórico e contrato HTTP.
+A suíte atual cobre autenticação/RBAC, catálogo, localização, estoque negativo, concorrência, custo médio, transferência atômica, lote/serial, política de aprovação, decisões únicas, atendimento idempotente, rollback por falta de saldo, retirada direta, histórico, contrato HTTP e contrato estático da demonstração.
 
 ## 📚 Documentação técnica
 
+- [`Contexto do produto`](./PRODUCT.md)
+- [`Design system Industrial Control Room`](./DESIGN.md)
 - [`Design geral da Fase 1`](./docs/superpowers/specs/2026-09-16-alma-phase-1-design.md)
 - [`Roadmap da Fase 1`](./docs/superpowers/plans/2026-09-16-alma-phase-1-roadmap.md)
 - [`Plano da Fase 1A`](./docs/superpowers/plans/2026-09-16-alma-phase-1a-foundation-auth.md)
@@ -309,6 +375,8 @@ A suíte cobre autenticação/RBAC, catálogo, localização, estoque negativo, 
 - [`Plano da Fase 1B`](./docs/superpowers/plans/2026-09-16-alma-phase-1b-catalog-locations.md)
 - [`Plano da Fase 1C`](./docs/superpowers/plans/2026-09-16-alma-phase-1c-inventory-ledger.md)
 - [`Plano da Fase 1D`](./docs/superpowers/plans/2026-09-16-alma-phase-1d-withdrawals-approvals.md)
+- [`Design da Fase 1E`](./docs/superpowers/specs/2026-09-16-alma-phase-1e-alerts-audit-design.md)
+- [`Plano da Fase 1E`](./docs/superpowers/plans/2026-09-16-alma-phase-1e-alerts-audit.md)
 
 ---
 
