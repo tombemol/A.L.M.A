@@ -1,5 +1,6 @@
 import { Prisma, prisma } from "@alma/database";
 import { DomainError } from "@alma/shared";
+import { writeAuditLog } from "../audit/audit.service.js";
 import {
   postInventoryMovementSchema,
   type ParsedInventoryMovementInput,
@@ -20,6 +21,22 @@ const outboundTypes = new Set([
 
 function notFound(message: string) {
   return new DomainError("NOT_FOUND", 404, message);
+}
+
+function auditAction(type: ParsedInventoryMovementInput["type"]) {
+  if (type === "ENTRY") return "INVENTORY_ENTRY";
+  if (type === "TRANSFER") return "INVENTORY_TRANSFER";
+  if (
+    type === "ADJUSTMENT_IN" ||
+    type === "ADJUSTMENT_OUT" ||
+    type === "INVENTORY_GAIN" ||
+    type === "INVENTORY_LOSS"
+  ) {
+    return "INVENTORY_ADJUSTMENT";
+  }
+  if (type === "RETURN") return "INVENTORY_RETURN";
+  if (type === "WITHDRAWAL") return "INVENTORY_WITHDRAWAL";
+  return "INVENTORY_MOVEMENT";
 }
 
 async function loadMovementContext(
@@ -535,6 +552,22 @@ export async function postInventoryMovementInTx(
       },
     },
     include: { items: true },
+  });
+
+  await writeAuditLog(tx, {
+    actorUserId,
+    action: auditAction(parsed.type),
+    entityType: "StockMovement",
+    entityId: movement.id,
+    after: {
+      type: parsed.type,
+      productId: parsed.productId,
+      quantity: parsed.quantity,
+      fromLocationId: parsed.fromLocationId ?? null,
+      toLocationId: parsed.toLocationId ?? null,
+      reason: parsed.reason ?? null,
+      reference: parsed.reference ?? null,
+    },
   });
 
   return { movement };
