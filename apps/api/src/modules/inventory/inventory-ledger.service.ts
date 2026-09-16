@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@alma/database";
 import { DomainError } from "@alma/shared";
 import {
   postInventoryMovementSchema,
+  type ParsedInventoryMovementInput,
   type PostInventoryMovementInput,
 } from "./inventory.schemas.js";
 
@@ -72,30 +73,189 @@ async function loadMovementContext(
   return product;
 }
 
-function resolveUntrackedStockKey(
-  product: { trackingMode: string },
-  tracking: PostInventoryMovementInput["tracking"],
+function trackingRequired(message: string) {
+  return new DomainError("TRACKING_REQUIRED", 400, message);
+}
+
+function trackingNotFound(kind: "lote" | "serial", value: string) {
+  return new DomainError(
+    "TRACKING_NOT_FOUND",
+    404,
+    `${kind === "lote" ? "Lote" : "Serial"} não encontrado para o produto`,
+    { kind, value },
+  );
+}
+
+async function resolveTracking(
+  tx: Prisma.TransactionClient,
+  product: { id: string; trackingMode: string },
+  tracking: ParsedInventoryMovementInput["tracking"],
+  quantity: Prisma.Decimal,
+  isInbound: boolean,
 ) {
-  if (product.trackingMode !== "NONE") {
-    throw new DomainError(
-      "TRACKING_REQUIRED",
-      400,
-      "O produto exige informações de rastreabilidade",
-    );
-  }
-  if (tracking?.lotCode || tracking?.serialNumber || tracking?.expiresAt) {
-    throw new DomainError(
-      "TRACKING_NOT_ALLOWED",
-      400,
-      "Este produto não utiliza lote, serial ou validade",
-    );
+  if (product.trackingMode === "NONE") {
+    if (tracking?.lotCode || tracking?.serialNumber || tracking?.expiresAt) {
+      throw new DomainError(
+        "TRACKING_NOT_ALLOWED",
+        400,
+        "Este produto não utiliza lote, serial ou validade",
+      );
+    }
+
+    return {
+      stockKey: "NONE",
+      lotId: null as string | null,
+      serialItemId: null as string | null,
+    };
   }
 
-  return {
-    stockKey: "NONE",
-    lotId: null as string | null,
-    serialItemId: null as string | null,
-  };
+  const isLot =
+    product.trackingMode === "LOT" || product.trackingMode === "LOT_EXPIRY";
+  const isSerial =
+    product.trackingMode === "SERIAL" ||
+    product.trackingMode === "SERIAL_EXPIRY";
+  const requiresExpiry =
+    product.trackingMode === "LOT_EXPIRY" ||
+    product.trackingMode === "SERIAL_EXPIRY";
+
+  if (isLot) {
+    if (!tracking?.lotCode) {
+      throw trackingRequired("Código do lote é obrigatório para este produto");
+    }
+    if (tracking.serialNumber) {
+      throw new DomainError(
+        "INVALID_TRACKING_DATA",
+        400,
+        "Produto rastreado por lote não aceita número de série",
+      );
+    }
+    if (!requiresExpiry && tracking.expiresAt) {
+      throw new DomainError(
+        "TRACKING_EXPIRY_NOT_ALLOWED",
+        400,
+        "Este modo de rastreabilidade não utiliza validade",
+      );
+    }
+
+    let lot = await tx.inventoryLot.findUnique({
+      where: {
+        productId_lotCode: {
+          productId: product.id,
+          lotCode: tracking.lotCode,
+        },
+      },
+    });
+
+    if (!lot) {
+      if (!isInbound) throw trackingNotFound("lote", tracking.lotCode);
+      if (requiresExpiry && !tracking.expiresAt) {
+        throw new DomainError(
+          "TRACKING_EXPIRY_REQUIRED",
+          400,
+          "Validade é obrigatória ao criar este lote",
+        );
+      }
+      lot = await tx.inventoryLot.create({
+        data: {
+          productId: product.id,
+          lotCode: tracking.lotCode,
+          ...(tracking.expiresAt ? { expiresAt: tracking.expiresAt } : {}),
+        },
+      });
+    } else if (
+      tracking.expiresAt &&
+      lot.expiresAt &&
+      lot.expiresAt.getTime() !== tracking.expiresAt.getTime()
+    ) {
+      throw new DomainError(
+        "TRACKING_EXPIRY_MISMATCH",
+        409,
+        "A validade informada diverge da validade cadastrada para o lote",
+      );
+    }
+
+    return {
+      stockKey: `LOT:${lot.id}`,
+      lotId: lot.id,
+      serialItemId: null as string | null,
+    };
+  }
+
+  if (isSerial) {
+    if (!tracking?.serialNumber) {
+      throw trackingRequired("Número de série é obrigatório para este produto");
+    }
+    if (tracking.lotCode) {
+      throw new DomainError(
+        "INVALID_TRACKING_DATA",
+        400,
+        "Produto serializado não aceita código de lote",
+      );
+    }
+    if (!quantity.equals(1)) {
+      throw new DomainError(
+        "SERIAL_QUANTITY_MUST_BE_ONE",
+        400,
+        "Movimentações de produto serializado devem ter quantidade igual a 1",
+      );
+    }
+    if (!requiresExpiry && tracking.expiresAt) {
+      throw new DomainError(
+        "TRACKING_EXPIRY_NOT_ALLOWED",
+        400,
+        "Este modo de rastreabilidade não utiliza validade",
+      );
+    }
+
+    let serial = await tx.serialItem.findUnique({
+      where: {
+        productId_serialNumber: {
+          productId: product.id,
+          serialNumber: tracking.serialNumber,
+        },
+      },
+    });
+
+    if (!serial) {
+      if (!isInbound) throw trackingNotFound("serial", tracking.serialNumber);
+      if (requiresExpiry && !tracking.expiresAt) {
+        throw new DomainError(
+          "TRACKING_EXPIRY_REQUIRED",
+          400,
+          "Validade é obrigatória ao criar este item serializado",
+        );
+      }
+      serial = await tx.serialItem.create({
+        data: {
+          productId: product.id,
+          serialNumber: tracking.serialNumber,
+          ...(tracking.expiresAt ? { expiresAt: tracking.expiresAt } : {}),
+        },
+      });
+    } else if (
+      tracking.expiresAt &&
+      serial.expiresAt &&
+      serial.expiresAt.getTime() !== tracking.expiresAt.getTime()
+    ) {
+      throw new DomainError(
+        "TRACKING_EXPIRY_MISMATCH",
+        409,
+        "A validade informada diverge da validade cadastrada para o serial",
+      );
+    }
+
+    return {
+      stockKey: `SERIAL:${serial.id}`,
+      lotId: null as string | null,
+      serialItemId: serial.id,
+    };
+  }
+
+  throw new DomainError(
+    "INVALID_TRACKING_MODE",
+    500,
+    "Modo de rastreabilidade do produto não reconhecido",
+  );
 }
 
 async function applyBalanceDelta(
@@ -270,8 +430,14 @@ export async function postInventoryMovement(
           (value): value is string => Boolean(value),
         );
         const product = await loadMovementContext(tx, parsed.productId, locationIds);
-        const tracking = resolveUntrackedStockKey(product, parsed.tracking);
         const quantity = new Prisma.Decimal(parsed.quantity);
+        const tracking = await resolveTracking(
+          tx,
+          product,
+          parsed.tracking,
+          quantity,
+          inboundTypes.has(parsed.type),
+        );
         let unitCost =
           parsed.unitCost !== undefined
             ? new Prisma.Decimal(parsed.unitCost)
