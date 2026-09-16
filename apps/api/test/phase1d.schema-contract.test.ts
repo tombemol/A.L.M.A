@@ -39,7 +39,7 @@ describe("contrato de persistência da Fase 1D", () => {
       "destinations.manage",
     ]) {
       expect(permissions).toContain(code);
-      expect(seed).toContain(code.split(".").join("_"));
+      expect(seed).toContain(code.toUpperCase().replace(/\./g, "_"));
     }
 
     expect(seed).toContain("WITHDRAWALS_REQUEST");
