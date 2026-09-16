@@ -34,6 +34,10 @@ export const createUserSchema = z
     }
   });
 
+export const userIdParamSchema = z.object({
+  id: z.string().trim().min(1),
+});
+
 export const setUserStatusSchema = z.object({
   active: z.boolean(),
 });
