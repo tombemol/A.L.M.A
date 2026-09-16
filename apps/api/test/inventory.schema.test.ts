@@ -1,17 +1,21 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@alma/database";
+
+async function resetInventoryTables() {
+  await prisma.stockMovementItem.deleteMany();
+  await prisma.stockMovement.deleteMany();
+  await prisma.inventoryBalance.deleteMany();
+  await prisma.inventoryValuation.deleteMany();
+  await prisma.serialItem.deleteMany();
+  await prisma.inventoryLot.deleteMany();
+}
 
 describe("persistência da Fase 1C", () => {
   let productId: string;
   let locationId: string;
 
   beforeEach(async () => {
-    await prisma.stockMovementItem.deleteMany();
-    await prisma.stockMovement.deleteMany();
-    await prisma.inventoryBalance.deleteMany();
-    await prisma.inventoryValuation.deleteMany();
-    await prisma.serialItem.deleteMany();
-    await prisma.inventoryLot.deleteMany();
+    await resetInventoryTables();
     await prisma.productLocation.deleteMany();
     await prisma.storageLocation.deleteMany();
     await prisma.warehouse.deleteMany();
@@ -58,6 +62,10 @@ describe("persistência da Fase 1C", () => {
 
     productId = product.id;
     locationId = location.id;
+  });
+
+  afterEach(async () => {
+    await resetInventoryTables();
   });
 
   it("persiste lote, saldo, valorização e item de ledger", async () => {
