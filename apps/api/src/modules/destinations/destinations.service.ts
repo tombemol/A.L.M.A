@@ -65,11 +65,14 @@ export async function updateDepartment(
   const existing = await prisma.department.findUnique({ where: { id } });
   if (!existing) throw notFound("Setor não encontrado");
 
+  const data: Prisma.DepartmentUpdateInput = {
+    ...(parsed.code !== undefined ? { code: parsed.code } : {}),
+    ...(parsed.name !== undefined ? { name: parsed.name } : {}),
+    ...(parsed.active !== undefined ? { active: parsed.active } : {}),
+  };
+
   try {
-    return await prisma.department.update({
-      where: { id },
-      data: parsed,
-    });
+    return await prisma.department.update({ where: { id }, data });
   } catch (error) {
     return mapDuplicate(error);
   }
@@ -81,7 +84,16 @@ export async function createEquipment(input: CreateEquipmentInput) {
   try {
     return await prisma.$transaction(async (tx) => {
       await requireActiveDepartment(tx, parsed.departmentId);
-      return tx.equipment.create({ data: parsed });
+      return tx.equipment.create({
+        data: {
+          departmentId: parsed.departmentId,
+          code: parsed.code,
+          name: parsed.name,
+          ...(parsed.description !== undefined
+            ? { description: parsed.description }
+            : {}),
+        },
+      });
     });
   } catch (error) {
     if (error instanceof DomainError) throw error;
@@ -118,7 +130,18 @@ export async function createWorkOrder(input: CreateWorkOrderInput) {
         }
       }
 
-      return tx.workOrder.create({ data: parsed });
+      return tx.workOrder.create({
+        data: {
+          code: parsed.code,
+          departmentId: parsed.departmentId,
+          ...(parsed.equipmentId !== undefined
+            ? { equipmentId: parsed.equipmentId }
+            : {}),
+          ...(parsed.description !== undefined
+            ? { description: parsed.description }
+            : {}),
+        },
+      });
     });
   } catch (error) {
     if (error instanceof DomainError) throw error;
