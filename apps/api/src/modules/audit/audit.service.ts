@@ -20,9 +20,9 @@ export async function writeAuditLog(client: AuditClient, event: AuditEvent) {
       action: event.action,
       entityType: event.entityType,
       entityId: event.entityId ?? null,
-      before: event.before ?? undefined,
-      after: event.after ?? undefined,
-      context: event.context ?? undefined,
+      ...(event.before != null ? { before: event.before } : {}),
+      ...(event.after != null ? { after: event.after } : {}),
+      ...(event.context != null ? { context: event.context } : {}),
     },
   });
 }
