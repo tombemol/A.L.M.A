@@ -9,6 +9,7 @@ import {
   createUserSchema,
   replaceUserRolesSchema,
   setUserStatusSchema,
+  userIdParamSchema,
 } from "./users.schemas.js";
 import {
   createUser,
@@ -43,8 +44,9 @@ usersRouter.patch(
   "/:id/status",
   requirePermission(PERMISSIONS.USERS_MANAGE),
   asyncHandler(async (req, res) => {
+    const { id } = userIdParamSchema.parse(req.params);
     const input = setUserStatusSchema.parse(req.body);
-    const user = await setUserActive(req.params.id, input.active);
+    const user = await setUserActive(id, input.active);
     res.status(200).json({ user });
   }),
 );
@@ -53,8 +55,9 @@ usersRouter.put(
   "/:id/roles",
   requirePermission(PERMISSIONS.USERS_MANAGE),
   asyncHandler(async (req, res) => {
+    const { id } = userIdParamSchema.parse(req.params);
     const input = replaceUserRolesSchema.parse(req.body);
-    const user = await replaceUserRoles(req.params.id, input.roleCodes);
+    const user = await replaceUserRoles(id, input.roleCodes);
     res.status(200).json({ user });
   }),
 );
