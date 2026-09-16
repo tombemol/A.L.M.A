@@ -1,0 +1,22 @@
+{
+  "name": "alma",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "dotenv -e .env -- pnpm --filter @alma/api dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "dotenv -e .env -- pnpm -r test",
+    "test:api": "dotenv -e .env -- pnpm --filter @alma/api test",
+    "db:generate": "dotenv -e .env -- pnpm --filter @alma/database prisma:generate",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @alma/database prisma:migrate",
+    "db:migrate:deploy": "dotenv -e .env -- pnpm --filter @alma/database prisma:migrate:deploy",
+    "db:seed": "dotenv -e .env -- pnpm --filter @alma/database prisma:seed"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0"
+  }
+}

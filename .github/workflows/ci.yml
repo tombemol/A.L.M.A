@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: alma_test
+          POSTGRES_USER: alma
+          POSTGRES_PASSWORD: alma
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U alma -d alma_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://alma:alma@localhost:5432/alma_test?schema=public
+      SESSION_COOKIE_NAME: alma_session
+      SESSION_TTL_HOURS: 12
+      AUTH_RATE_LIMIT_WINDOW_MS: 60000
+      AUTH_RATE_LIMIT_MAX: 1000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:migrate:deploy
+      - name: Verify idempotent seed
+        run: |
+          pnpm db:seed
+          pnpm db:seed
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
