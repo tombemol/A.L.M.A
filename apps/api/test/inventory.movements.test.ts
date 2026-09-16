@@ -4,6 +4,9 @@ import { DomainError } from "@alma/shared";
 import { postInventoryMovement } from "../src/modules/inventory/inventory-ledger.service.js";
 
 async function resetInventoryTables() {
+  await prisma.auditLog.deleteMany();
+  await prisma.approval.deleteMany();
+  await prisma.withdrawalRequest.deleteMany();
   await prisma.stockMovementItem.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.inventoryBalance.deleteMany();
@@ -19,6 +22,8 @@ describe("transferências e ajustes de estoque", () => {
 
   beforeEach(async () => {
     await resetInventoryTables();
+    await prisma.alert.deleteMany();
+    await prisma.reorderPolicy.deleteMany();
     await prisma.productLocation.deleteMany();
     await prisma.storageLocation.deleteMany();
     await prisma.warehouse.deleteMany();
