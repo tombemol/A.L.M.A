@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - agent/phase-1b-catalog-locations
     paths:
       - "preview/**"
       - ".github/workflows/pages.yml"

@@ -60,6 +60,8 @@ test("o README apresenta arquitetura, roadmap e demonstração de forma visual",
   assert.match(readme, /```mermaid/);
   assert.match(readme, /## 🗺️ Roadmap/);
   assert.match(readme, /Fase 1A.*Concluída/);
-  assert.match(readme, /Fase 1B.*Em desenvolvimento/);
+  assert.match(readme, /Fase 1B.*Concluída/);
+  assert.match(readme, /Fase 1C.*Próxima/);
+  assert.match(readme, /https:\/\/tombemol\.github\.io\/A\.L\.M\.A\.\//);
   assert.match(readme, /Demonstração para tablet/);
 });

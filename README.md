@@ -10,7 +10,11 @@
   <a href="https://github.com/tombemol/A.L.M.A./actions/workflows/ci.yml"><img alt="Integração contínua" src="https://github.com/tombemol/A.L.M.A./actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
-> 🚧 **Estado atual:** Fase 1A concluída. A Fase 1B está em desenvolvimento com catálogo industrial, almoxarifados e endereçamento físico já implementados no backend.
+<p align="center">
+  <a href="https://tombemol.github.io/A.L.M.A./"><strong>▶ Abrir demonstração para tablet</strong></a>
+</p>
+
+> ✅ **Estado atual:** Fases 1A e 1B concluídas. Autenticação/RBAC, catálogo industrial, almoxarifados, hierarquia física e associação produto-localização já formam a base operacional. A próxima entrega é a Fase 1C, com ledger de estoque, saldos, transferências e custos.
 
 ## 🧭 Visão geral
 
@@ -23,10 +27,10 @@ A proposta evolui por fases. O sistema começa como um monólito modular e, post
 | Área | Estado | Recursos principais |
 | --- | --- | --- |
 | Autenticação e RBAC | ✅ Disponível | Login de operador e administrador, sessões seguras, papéis e permissões |
-| Catálogo industrial | ✅ Backend pronto na 1B | Categorias, unidades, produtos, identificadores e conversões |
-| Localização física | ✅ Backend pronto na 1B | Almoxarifados, hierarquia flexível e posições dedicadas/compartilhadas |
-| Produto por posição | ✅ Backend pronto na 1B | Múltiplas posições e uma localização principal por almoxarifado |
-| Estoque e movimentações | ⏳ Próxima fase | Entradas, transferências, saldos e custos |
+| Catálogo industrial | ✅ Fase 1B concluída | Categorias, unidades, produtos, identificadores e conversões |
+| Localização física | ✅ Fase 1B concluída | Almoxarifados, hierarquia flexível e posições dedicadas/compartilhadas |
+| Produto por posição | ✅ Fase 1B concluída | Múltiplas posições e uma localização principal por almoxarifado |
+| Estoque e movimentações | 🚧 Próxima fase | Entradas, transferências, saldos, lotes e custos |
 | Retiradas e histórico | ⏳ Planejado | Destino estruturado, aprovações e histórico por usuário |
 | Visão computacional | 🔭 Futuro | Identificação assistida por câmera e reconhecimento facial complementar |
 
@@ -34,7 +38,11 @@ A proposta evolui por fases. O sistema começa como um monólito modular e, post
 
 A pasta [`preview/`](./preview/) contém uma demonstração estática e responsiva da interface pensada para operação em tablet. Ela permite navegar por visão geral, produtos, localizações e um leitor simulado de códigos.
 
-> A publicação automática por GitHub Pages já está configurada em `.github/workflows/pages.yml`. O repositório ainda precisa ter o GitHub Pages habilitado uma vez nas configurações para que a URL pública seja criada.
+A demonstração pública é publicada automaticamente pelo GitHub Pages a partir da `main`:
+
+**https://tombemol.github.io/A.L.M.A./**
+
+O Pages funciona como vitrine de cada fase concluída. Mudanças de desenvolvimento permanecem nas branches até serem integradas, então o endereço público representa sempre a última fase fechada e revisada.
 
 ## 🏗️ Arquitetura
 
@@ -70,8 +78,8 @@ A.L.M.A./
 | Fase | Escopo | Estado |
 | --- | --- | --- |
 | **Fase 1A** | Fundação, autenticação, usuários e RBAC | ✅ Concluída |
-| **Fase 1B** | Catálogo, produtos, almoxarifados e localizações | 🚧 Em desenvolvimento |
-| **Fase 1C** | Estoque, entradas, transferências e custos | ⏳ Planejada |
+| **Fase 1B** | Catálogo, produtos, almoxarifados e localizações | ✅ Concluída |
+| **Fase 1C** | Estoque, entradas, transferências e custos | 🚧 Próxima |
 | **Fase 1D** | Retiradas, destinos, aprovações e histórico | ⏳ Planejada |
 | **Fase 1E** | Alertas e auditoria | ⏳ Planejada |
 | **Fase 1F** | Frontend operacional completo | ⏳ Planejada |
@@ -110,7 +118,7 @@ locations.manage
 
 ## 📦 API da Fase 1B
 
-Os módulos atuais estão disponíveis em:
+Os módulos concluídos na Fase 1B estão disponíveis em:
 
 ```text
 /api/categories
