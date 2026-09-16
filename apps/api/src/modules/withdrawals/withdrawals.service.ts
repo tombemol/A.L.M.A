@@ -1,0 +1,132 @@
+import { Prisma, prisma } from "@alma/database";
+import { DomainError } from "@alma/shared";
+import {
+  createWithdrawalRequestSchema,
+  type CreateWithdrawalRequestInput,
+} from "./withdrawals.schemas.js";
+
+function notFound(message: string) {
+  return new DomainError("NOT_FOUND", 404, message);
+}
+
+function invalidDestination(message: string) {
+  return new DomainError("INVALID_WITHDRAWAL_DESTINATION", 400, message);
+}
+
+export async function createWithdrawalRequest(
+  requesterUserId: string,
+  input: CreateWithdrawalRequestInput,
+) {
+  const parsed = createWithdrawalRequestSchema.parse(input);
+
+  return prisma.$transaction(async (tx) => {
+    const requester = await tx.user.findFirst({
+      where: { id: requesterUserId, active: true },
+      select: { id: true },
+    });
+    if (!requester) throw notFound("Solicitante não encontrado ou inativo");
+
+    const product = await tx.product.findFirst({
+      where: { id: parsed.productId, active: true },
+      select: {
+        id: true,
+        requiresWithdrawalApproval: true,
+        category: {
+          select: {
+            id: true,
+            active: true,
+            requiresWithdrawalApproval: true,
+          },
+        },
+      },
+    });
+    if (!product || !product.category.active) {
+      throw notFound("Produto não encontrado ou inativo");
+    }
+
+    const department = await tx.department.findFirst({
+      where: { id: parsed.departmentId, active: true },
+      select: { id: true },
+    });
+    if (!department) throw notFound("Setor não encontrado ou inativo");
+
+    if (parsed.equipmentId) {
+      const equipment = await tx.equipment.findFirst({
+        where: { id: parsed.equipmentId, active: true },
+        select: { id: true, departmentId: true },
+      });
+      if (!equipment) throw notFound("Equipamento não encontrado ou inativo");
+      if (equipment.departmentId !== parsed.departmentId) {
+        throw invalidDestination("O equipamento informado não pertence ao setor selecionado");
+      }
+    }
+
+    if (parsed.workOrderId) {
+      const workOrder = await tx.workOrder.findFirst({
+        where: { id: parsed.workOrderId, active: true },
+        select: { id: true, departmentId: true, equipmentId: true },
+      });
+      if (!workOrder) throw notFound("Ordem de serviço não encontrada ou inativa");
+      if (workOrder.departmentId !== parsed.departmentId) {
+        throw invalidDestination("A ordem de serviço não pertence ao setor selecionado");
+      }
+      if (
+        parsed.equipmentId &&
+        workOrder.equipmentId &&
+        workOrder.equipmentId !== parsed.equipmentId
+      ) {
+        throw invalidDestination("A ordem de serviço pertence a outro equipamento");
+      }
+    }
+
+    if (parsed.fromLocationId) {
+      const location = await tx.storageLocation.findFirst({
+        where: { id: parsed.fromLocationId, active: true },
+        include: { warehouse: { select: { active: true } } },
+      });
+      if (!location || !location.warehouse.active) {
+        throw notFound("Localização de origem não encontrada ou inativa");
+      }
+      if (location.kind !== "POSITION") {
+        throw invalidDestination("A origem da retirada precisa ser uma posição física");
+      }
+      const association = await tx.productLocation.findUnique({
+        where: {
+          productId_locationId: {
+            productId: parsed.productId,
+            locationId: parsed.fromLocationId,
+          },
+        },
+        select: { id: true },
+      });
+      if (!association) {
+        throw new DomainError(
+          "PRODUCT_LOCATION_REQUIRED",
+          409,
+          "O produto precisa estar associado à posição escolhida",
+        );
+      }
+    }
+
+    const requiresApproval =
+      product.requiresWithdrawalApproval ||
+      product.category.requiresWithdrawalApproval;
+
+    return tx.withdrawalRequest.create({
+      data: {
+        productId: parsed.productId,
+        quantity: new Prisma.Decimal(parsed.quantity),
+        requesterUserId,
+        departmentId: parsed.departmentId,
+        ...(parsed.equipmentId ? { equipmentId: parsed.equipmentId } : {}),
+        ...(parsed.workOrderId ? { workOrderId: parsed.workOrderId } : {}),
+        ...(parsed.fromLocationId
+          ? { fromLocationId: parsed.fromLocationId }
+          : {}),
+        ...(parsed.notes ? { notes: parsed.notes } : {}),
+        requiresApprovalSnapshot: requiresApproval,
+        status: requiresApproval ? "PENDING_APPROVAL" : "APPROVED",
+      },
+    });
+  });
+}
