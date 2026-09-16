@@ -57,7 +57,7 @@ export async function listInventoryMovements(query: InventoryMovementsQuery) {
         : {}),
     },
     include: {
-      performedByUser: {
+      performedBy: {
         select: {
           id: true,
           employeeCode: true,
@@ -76,17 +76,17 @@ export async function listInventoryMovements(query: InventoryMovementsQuery) {
             },
           },
           fromLocation: {
-            select: { id: true, code: true, displayName: true },
+            select: { id: true, code: true, name: true },
           },
           toLocation: {
-            select: { id: true, code: true, displayName: true },
+            select: { id: true, code: true, name: true },
           },
           lot: true,
           serialItem: true,
         },
       },
     },
-    orderBy: { occurredAt: "desc" },
+    orderBy: { createdAt: "desc" },
     take: query.limit,
   });
 
