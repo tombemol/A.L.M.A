@@ -64,4 +64,6 @@ jobs:
       - run: pnpm test
       - run: node --test preview/test/*.test.mjs
       - run: node --check preview/app.js
+      - name: Detectar anti-padrões visuais com Impeccable
+        run: npx --yes impeccable@4.1.0 detect preview/
       - run: pnpm build
