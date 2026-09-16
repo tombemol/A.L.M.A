@@ -29,7 +29,7 @@ export const withdrawalRequestIdParamSchema = z.object({
   id: z.string().min(1, "Solicitação é obrigatória"),
 });
 
-export const createWithdrawalRequestSchema = z.object({
+const withdrawalRequestObjectSchema = z.object({
   productId: z.string().min(1, "Produto é obrigatório"),
   quantity: positiveDecimalSchema,
   departmentId: z.string().min(1, "Setor é obrigatório"),
@@ -39,17 +39,65 @@ export const createWithdrawalRequestSchema = z.object({
   notes: z.string().trim().min(1).max(1000).optional(),
 });
 
+type ParsedWithdrawalRequest = {
+  productId: string;
+  quantity: string;
+  departmentId: string;
+  equipmentId?: string;
+  workOrderId?: string;
+  fromLocationId?: string;
+  notes?: string;
+};
+
+function normalizeWithdrawalRequest(
+  input: z.output<typeof withdrawalRequestObjectSchema>,
+): ParsedWithdrawalRequest {
+  return {
+    productId: input.productId,
+    quantity: input.quantity,
+    departmentId: input.departmentId,
+    ...(input.equipmentId !== undefined ? { equipmentId: input.equipmentId } : {}),
+    ...(input.workOrderId !== undefined ? { workOrderId: input.workOrderId } : {}),
+    ...(input.fromLocationId !== undefined
+      ? { fromLocationId: input.fromLocationId }
+      : {}),
+    ...(input.notes !== undefined ? { notes: input.notes } : {}),
+  };
+}
+
+export const createWithdrawalRequestSchema = withdrawalRequestObjectSchema.transform(
+  normalizeWithdrawalRequest,
+);
+
 export const fulfillWithdrawalRequestSchema = z.object({
   fromLocationId: z.string().min(1, "Localização de origem é obrigatória"),
   tracking: inventoryTrackingInputSchema.optional(),
 });
 
-export const directWithdrawalSchema = createWithdrawalRequestSchema
+const directWithdrawalObjectSchema = withdrawalRequestObjectSchema
   .omit({ fromLocationId: true })
   .extend({
     fromLocationId: z.string().min(1, "Localização de origem é obrigatória"),
     tracking: inventoryTrackingInputSchema.optional(),
   });
+
+type ParsedDirectWithdrawal = ParsedWithdrawalRequest & {
+  fromLocationId: string;
+  tracking?: z.output<typeof inventoryTrackingInputSchema>;
+};
+
+export const directWithdrawalSchema = directWithdrawalObjectSchema.transform(
+  (input): ParsedDirectWithdrawal => ({
+    productId: input.productId,
+    quantity: input.quantity,
+    departmentId: input.departmentId,
+    fromLocationId: input.fromLocationId,
+    ...(input.equipmentId !== undefined ? { equipmentId: input.equipmentId } : {}),
+    ...(input.workOrderId !== undefined ? { workOrderId: input.workOrderId } : {}),
+    ...(input.notes !== undefined ? { notes: input.notes } : {}),
+    ...(input.tracking !== undefined ? { tracking: input.tracking } : {}),
+  }),
+);
 
 export const withdrawalDecisionSchema = z.object({
   comment: z.string().trim().min(1).max(1000).optional(),
