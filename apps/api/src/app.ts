@@ -12,6 +12,7 @@ import { usersRouter } from "./modules/auth/users.routes.js";
 import { categoriesRouter } from "./modules/catalog/categories.routes.js";
 import { productsRouter } from "./modules/catalog/products.routes.js";
 import { unitsRouter } from "./modules/catalog/units.routes.js";
+import { inventoryRouter } from "./modules/inventory/inventory.routes.js";
 import { productLocationsRouter } from "./modules/locations/product-locations.routes.js";
 import {
   storageLocationsRouter,
@@ -39,6 +40,7 @@ app.use("/api/products", productLocationsRouter);
 app.use("/api/warehouses", warehousesRouter);
 app.use("/api/warehouses", warehouseLocationsRouter);
 app.use("/api/locations", storageLocationsRouter);
+app.use("/api/inventory", inventoryRouter);
 
 app.get(
   "/api/internal/admin-check",
