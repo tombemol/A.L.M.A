@@ -96,6 +96,6 @@ test("o README fecha a Fase 1D e aponta a Fase 1E como próxima", async () => {
   assert.match(readme, /POST \/api\/withdrawal-requests/);
   assert.match(readme, /POST \/api\/withdrawals\/direct/);
   assert.match(readme, /GET  \/api\/destinations\/departments/);
-  assert.match(readme, /https:\/\/tombemol\.github\.io\/A\.L\.M\.A\.\//);
+  assert.match(readme, /https:\/\/tombemol\.github\.io\/A\.L\.M\.A\//);
   assert.match(readme, /Demonstração para tablet/);
 });
