@@ -162,6 +162,48 @@ async function applyBalanceDelta(
   });
 }
 
+async function applyInboundValuation(
+  tx: Prisma.TransactionClient,
+  productId: string,
+  quantity: Prisma.Decimal,
+  requestedUnitCost: Prisma.Decimal | null,
+) {
+  const existing = await tx.inventoryValuation.findUnique({
+    where: { productId },
+  });
+  const currentQuantity = existing?.quantity ?? new Prisma.Decimal(0);
+  const currentTotalValue = existing?.totalValue ?? new Prisma.Decimal(0);
+  const effectiveUnitCost =
+    requestedUnitCost ?? existing?.averageUnitCost ?? new Prisma.Decimal(0);
+  const nextQuantity = currentQuantity.plus(quantity);
+  const nextTotalValue = currentTotalValue.plus(
+    effectiveUnitCost.times(quantity),
+  );
+  const nextAverageUnitCost = nextTotalValue.dividedBy(nextQuantity);
+
+  if (existing) {
+    await tx.inventoryValuation.update({
+      where: { productId },
+      data: {
+        quantity: nextQuantity,
+        averageUnitCost: nextAverageUnitCost,
+        totalValue: nextTotalValue,
+      },
+    });
+  } else {
+    await tx.inventoryValuation.create({
+      data: {
+        productId,
+        quantity: nextQuantity,
+        averageUnitCost: nextAverageUnitCost,
+        totalValue: nextTotalValue,
+      },
+    });
+  }
+
+  return effectiveUnitCost;
+}
+
 export async function postInventoryMovement(
   actorUserId: string | null,
   input: PostInventoryMovementInput,
@@ -177,14 +219,31 @@ export async function postInventoryMovement(
         const product = await loadMovementContext(tx, parsed.productId, locationIds);
         const tracking = resolveUntrackedStockKey(product, parsed.tracking);
         const quantity = new Prisma.Decimal(parsed.quantity);
+        let unitCost =
+          parsed.unitCost !== undefined
+            ? new Prisma.Decimal(parsed.unitCost)
+            : null;
 
         if (inboundTypes.has(parsed.type) && parsed.toLocationId) {
+          if (parsed.type === "ENTRY" && unitCost === null) {
+            throw new DomainError(
+              "UNIT_COST_REQUIRED",
+              400,
+              "Custo unitário é obrigatório em entradas",
+            );
+          }
           await applyBalanceDelta(tx, {
             productId: parsed.productId,
             locationId: parsed.toLocationId,
             ...tracking,
             delta: quantity,
           });
+          unitCost = await applyInboundValuation(
+            tx,
+            parsed.productId,
+            quantity,
+            unitCost,
+          );
         } else if (outboundTypes.has(parsed.type) && parsed.fromLocationId) {
           await applyBalanceDelta(tx, {
             productId: parsed.productId,
@@ -211,9 +270,6 @@ export async function postInventoryMovement(
           });
         }
 
-        const unitCost = parsed.unitCost
-          ? new Prisma.Decimal(parsed.unitCost)
-          : null;
         const totalCost = unitCost ? unitCost.times(quantity) : null;
 
         const movement = await tx.stockMovement.create({
