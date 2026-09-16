@@ -1,5 +1,4 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@alma/database";
+import { prisma, type Prisma } from "@alma/database";
 import type { AuditListQuery } from "./audit.schemas.js";
 
 export type AuditEvent = {
