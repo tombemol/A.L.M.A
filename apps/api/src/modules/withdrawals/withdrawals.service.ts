@@ -130,3 +130,92 @@ export async function createWithdrawalRequest(
     });
   });
 }
+
+async function decideWithdrawalRequest(
+  decidedByUserId: string,
+  requestId: string,
+  decision: "APPROVED" | "REJECTED",
+  comment?: string,
+) {
+  const normalizedComment = comment?.trim();
+  if (normalizedComment && normalizedComment.length > 1000) {
+    throw new DomainError(
+      "VALIDATION_ERROR",
+      400,
+      "Comentário deve ter no máximo 1000 caracteres",
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const actor = await tx.user.findFirst({
+      where: { id: decidedByUserId, active: true },
+      select: { id: true },
+    });
+    if (!actor) throw notFound("Aprovador não encontrado ou inativo");
+
+    const existing = await tx.withdrawalRequest.findUnique({
+      where: { id: requestId },
+      select: { id: true, status: true, requiresApprovalSnapshot: true },
+    });
+    if (!existing) throw notFound("Solicitação de retirada não encontrada");
+    if (!existing.requiresApprovalSnapshot) {
+      throw new DomainError(
+        "WITHDRAWAL_APPROVAL_NOT_REQUIRED",
+        409,
+        "Esta solicitação não exige decisão de aprovação",
+      );
+    }
+
+    const claimed = await tx.withdrawalRequest.updateMany({
+      where: { id: requestId, status: "PENDING_APPROVAL" },
+      data: { status: decision === "APPROVED" ? "APPROVED" : "REJECTED" },
+    });
+    if (claimed.count !== 1) {
+      throw new DomainError(
+        "WITHDRAWAL_ALREADY_DECIDED",
+        409,
+        "A solicitação já foi decidida ou não está mais pendente",
+        { currentStatus: existing.status },
+      );
+    }
+
+    await tx.approval.create({
+      data: {
+        withdrawalRequestId: requestId,
+        decision,
+        decidedByUserId,
+        ...(normalizedComment ? { comment: normalizedComment } : {}),
+      },
+    });
+
+    return tx.withdrawalRequest.findUniqueOrThrow({
+      where: { id: requestId },
+    });
+  });
+}
+
+export function approveWithdrawalRequest(
+  decidedByUserId: string,
+  requestId: string,
+  comment?: string,
+) {
+  return decideWithdrawalRequest(
+    decidedByUserId,
+    requestId,
+    "APPROVED",
+    comment,
+  );
+}
+
+export function rejectWithdrawalRequest(
+  decidedByUserId: string,
+  requestId: string,
+  comment?: string,
+) {
+  return decideWithdrawalRequest(
+    decidedByUserId,
+    requestId,
+    "REJECTED",
+    comment,
+  );
+}
