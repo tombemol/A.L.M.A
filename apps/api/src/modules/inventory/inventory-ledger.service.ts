@@ -137,17 +137,18 @@ async function resolveTracking(
       );
     }
 
+    const lotCode = tracking.lotCode.trim().toUpperCase();
     let lot = await tx.inventoryLot.findUnique({
       where: {
         productId_lotCode: {
           productId: product.id,
-          lotCode: tracking.lotCode,
+          lotCode,
         },
       },
     });
 
     if (!lot) {
-      if (!isInbound) throw trackingNotFound("lote", tracking.lotCode);
+      if (!isInbound) throw trackingNotFound("lote", lotCode);
       if (requiresExpiry && !tracking.expiresAt) {
         throw new DomainError(
           "TRACKING_EXPIRY_REQUIRED",
@@ -158,7 +159,7 @@ async function resolveTracking(
       lot = await tx.inventoryLot.create({
         data: {
           productId: product.id,
-          lotCode: tracking.lotCode,
+          lotCode,
           ...(tracking.expiresAt ? { expiresAt: tracking.expiresAt } : {}),
         },
       });
@@ -232,16 +233,39 @@ async function resolveTracking(
           ...(tracking.expiresAt ? { expiresAt: tracking.expiresAt } : {}),
         },
       });
-    } else if (
-      tracking.expiresAt &&
-      serial.expiresAt &&
-      serial.expiresAt.getTime() !== tracking.expiresAt.getTime()
-    ) {
-      throw new DomainError(
-        "TRACKING_EXPIRY_MISMATCH",
-        409,
-        "A validade informada diverge da validade cadastrada para o serial",
-      );
+    } else {
+      if (
+        tracking.expiresAt &&
+        serial.expiresAt &&
+        serial.expiresAt.getTime() !== tracking.expiresAt.getTime()
+      ) {
+        throw new DomainError(
+          "TRACKING_EXPIRY_MISMATCH",
+          409,
+          "A validade informada diverge da validade cadastrada para o serial",
+        );
+      }
+
+      if (isInbound) {
+        const positiveBalance = await tx.inventoryBalance.findFirst({
+          where: {
+            serialItemId: serial.id,
+            quantity: { gt: 0 },
+          },
+          select: { locationId: true },
+        });
+        if (positiveBalance) {
+          throw new DomainError(
+            "SERIAL_ALREADY_IN_STOCK",
+            409,
+            "O serial já possui saldo positivo em outra posição",
+            {
+              serialNumber: tracking.serialNumber,
+              locationId: positiveBalance.locationId,
+            },
+          );
+        }
+      }
     }
 
     return {
