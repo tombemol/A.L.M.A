@@ -7,6 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ProductIdentifierType {
+  EAN
+  UPC
+  MANUFACTURER
+  INTERNAL_BARCODE
+  QR
+  OTHER
+}
+
+enum StorageLocationKind {
+  AISLE
+  RACK
+  SHELF
+  POSITION
+}
+
+enum OccupancyMode {
+  DEDICATED
+  SHARED
+}
+
 model User {
   id           String        @id @default(cuid())
   employeeCode String?       @unique
@@ -67,4 +88,129 @@ model AuthSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  parentId  String?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+
+  @@index([parentId])
+}
+
+model UnitOfMeasure {
+  id            String                  @id @default(cuid())
+  code          String                  @unique
+  name          String
+  symbol        String
+  allowsDecimal Boolean                 @default(false)
+  active        Boolean                 @default(true)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  baseProducts  Product[]               @relation("ProductBaseUnit")
+  conversions   ProductUnitConversion[]
+}
+
+model Product {
+  id           String                  @id @default(cuid())
+  sku          String                  @unique
+  name         String
+  description  String?
+  categoryId   String
+  baseUnitId   String
+  manufacturer String?
+  active       Boolean                 @default(true)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  category     Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  baseUnit     UnitOfMeasure           @relation("ProductBaseUnit", fields: [baseUnitId], references: [id], onDelete: Restrict)
+  identifiers  ProductIdentifier[]
+  conversions  ProductUnitConversion[]
+  locations    ProductLocation[]
+
+  @@index([categoryId])
+  @@index([baseUnitId])
+}
+
+model ProductIdentifier {
+  id              String                @id @default(cuid())
+  productId       String
+  type            ProductIdentifierType
+  value           String
+  normalizedValue String                @unique
+  label           String?
+  createdAt       DateTime              @default(now())
+  product         Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductUnitConversion {
+  id           String        @id @default(cuid())
+  productId    String
+  unitId       String
+  factorToBase Decimal       @db.Decimal(18, 6)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  unit         UnitOfMeasure @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, unitId])
+  @@index([unitId])
+}
+
+model Warehouse {
+  id               String            @id @default(cuid())
+  code             String            @unique
+  name             String
+  description      String?
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  locations        StorageLocation[]
+  productLocations ProductLocation[]
+}
+
+model StorageLocation {
+  id               String              @id @default(cuid())
+  warehouseId      String
+  parentId         String?
+  kind             StorageLocationKind
+  code             String
+  name             String?
+  occupancyMode    OccupancyMode?
+  active           Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  warehouse        Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  parent           StorageLocation?    @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children         StorageLocation[]   @relation("StorageLocationTree")
+  productLocations ProductLocation[]
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId, kind])
+  @@index([parentId])
+}
+
+model ProductLocation {
+  id          String          @id @default(cuid())
+  productId   String
+  warehouseId String
+  locationId  String
+  isPrimary   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  location    StorageLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, locationId])
+  @@index([productId, warehouseId])
+  @@index([warehouseId])
+  @@index([locationId])
 }

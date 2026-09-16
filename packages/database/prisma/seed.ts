@@ -8,6 +8,10 @@ const permissionEntries = [
   [PERMISSIONS.ROLES_READ, "Consultar papéis"],
   [PERMISSIONS.ROLES_MANAGE, "Gerenciar papéis"],
   [PERMISSIONS.ADMIN_ACCESS, "Acesso administrativo"],
+  [PERMISSIONS.CATALOG_READ, "Consultar catálogo"],
+  [PERMISSIONS.CATALOG_MANAGE, "Gerenciar catálogo"],
+  [PERMISSIONS.LOCATIONS_READ, "Consultar localizações"],
+  [PERMISSIONS.LOCATIONS_MANAGE, "Gerenciar localizações"],
 ] as const;
 
 const roleNames = {
@@ -15,6 +19,19 @@ const roleNames = {
   ALMOXARIFE: "Almoxarife",
   SOLICITANTE: "Solicitante",
   APROVADOR: "Aprovador",
+} as const;
+
+const rolePermissionCodes = {
+  ADMIN: Object.values(PERMISSIONS),
+  ALMOXARIFE: [
+    PERMISSIONS.USERS_READ,
+    PERMISSIONS.CATALOG_READ,
+    PERMISSIONS.CATALOG_MANAGE,
+    PERMISSIONS.LOCATIONS_READ,
+    PERMISSIONS.LOCATIONS_MANAGE,
+  ],
+  SOLICITANTE: [PERMISSIONS.CATALOG_READ, PERMISSIONS.LOCATIONS_READ],
+  APROVADOR: [PERMISSIONS.CATALOG_READ, PERMISSIONS.LOCATIONS_READ],
 } as const;
 
 async function main() {
@@ -26,7 +43,6 @@ async function main() {
       update: { name },
       create: { code, name },
     });
-
     permissionRows.set(code, row.id);
   }
 
@@ -38,28 +54,27 @@ async function main() {
       update: { name },
       create: { code, name },
     });
-
     roleRows.set(code, row.id);
   }
 
-  const adminRoleId = roleRows.get("ADMIN");
-  if (!adminRoleId) throw new Error("ADMIN role not seeded");
+  for (const [roleCode, permissionCodes] of Object.entries(rolePermissionCodes)) {
+    const roleId = roleRows.get(roleCode);
+    if (!roleId) throw new Error(`Papel não criado: ${roleCode}`);
 
-  for (const permissionId of permissionRows.values()) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: adminRoleId,
-          permissionId,
-        },
-      },
-      update: {},
-      create: {
-        roleId: adminRoleId,
-        permissionId,
-      },
-    });
+    for (const code of permissionCodes) {
+      const permissionId = permissionRows.get(code);
+      if (!permissionId) throw new Error(`Permissão não criada: ${code}`);
+
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId, permissionId } },
+        update: {},
+        create: { roleId, permissionId },
+      });
+    }
   }
+
+  const adminRoleId = roleRows.get("ADMIN");
+  if (!adminRoleId) throw new Error("Papel ADMIN não criado");
 
   const username = process.env.BOOTSTRAP_ADMIN_USERNAME?.trim();
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
@@ -74,10 +89,7 @@ async function main() {
 
     const admin = await prisma.user.upsert({
       where: { username },
-      update: {
-        active: true,
-        passwordHash,
-      },
+      update: { active: true, passwordHash },
       create: {
         username,
         displayName: "Administrador",
@@ -87,16 +99,10 @@ async function main() {
 
     await prisma.userRole.upsert({
       where: {
-        userId_roleId: {
-          userId: admin.id,
-          roleId: adminRoleId,
-        },
+        userId_roleId: { userId: admin.id, roleId: adminRoleId },
       },
       update: {},
-      create: {
-        userId: admin.id,
-        roleId: adminRoleId,
-      },
+      create: { userId: admin.id, roleId: adminRoleId },
     });
   }
 }
