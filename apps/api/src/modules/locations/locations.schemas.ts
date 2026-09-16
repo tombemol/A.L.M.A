@@ -50,12 +50,26 @@ export const updateStorageLocationSchema = z.object({
   active: z.boolean().optional(),
 });
 
+export const associateProductLocationSchema = z.object({
+  locationId: z.string().min(1, "Posição é obrigatória"),
+  isPrimary: z.boolean().default(false),
+});
+
 export const warehouseIdParamSchema = z.object({
   warehouseId: z.string().min(1, "Almoxarifado é obrigatório"),
 });
 
 export const locationIdParamSchema = z.object({
   id: z.string().min(1, "Localização é obrigatória"),
+});
+
+export const productLocationProductParamSchema = z.object({
+  productId: z.string().min(1, "Produto é obrigatório"),
+});
+
+export const productLocationAssociationParamSchema = z.object({
+  productId: z.string().min(1, "Produto é obrigatório"),
+  associationId: z.string().min(1, "Associação é obrigatória"),
 });
 
 export type CreateWarehouseInput = z.input<typeof createWarehouseSchema>;
@@ -65,4 +79,7 @@ export type CreateStorageLocationInput = z.input<
 >;
 export type UpdateStorageLocationInput = z.input<
   typeof updateStorageLocationSchema
+>;
+export type AssociateProductLocationInput = z.input<
+  typeof associateProductLocationSchema
 >;
