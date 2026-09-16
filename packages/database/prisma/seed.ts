@@ -2,13 +2,13 @@ import argon2 from "argon2";
 import { PERMISSIONS } from "@alma/shared";
 import { prisma } from "../src/client.js";
 
-const permissionNames: Record<string, string> = {
-  [PERMISSIONS.USERS_READ]: "Consultar usuários",
-  [PERMISSIONS.USERS_MANAGE]: "Gerenciar usuários",
-  [PERMISSIONS.ROLES_READ]: "Consultar papéis",
-  [PERMISSIONS.ROLES_MANAGE]: "Gerenciar papéis",
-  [PERMISSIONS.ADMIN_ACCESS]: "Acesso administrativo",
-};
+const permissionEntries = [
+  [PERMISSIONS.USERS_READ, "Consultar usuários"],
+  [PERMISSIONS.USERS_MANAGE, "Gerenciar usuários"],
+  [PERMISSIONS.ROLES_READ, "Consultar papéis"],
+  [PERMISSIONS.ROLES_MANAGE, "Gerenciar papéis"],
+  [PERMISSIONS.ADMIN_ACCESS, "Acesso administrativo"],
+] as const;
 
 const roleNames = {
   ADMIN: "Administrador",
@@ -20,11 +20,11 @@ const roleNames = {
 async function main() {
   const permissionRows = new Map<string, string>();
 
-  for (const code of Object.values(PERMISSIONS)) {
+  for (const [code, name] of permissionEntries) {
     const row = await prisma.permission.upsert({
       where: { code },
-      update: { name: permissionNames[code] },
-      create: { code, name: permissionNames[code] },
+      update: { name },
+      create: { code, name },
     });
 
     permissionRows.set(code, row.id);
