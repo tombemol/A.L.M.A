@@ -1,7 +1,12 @@
 import cookieParser from "cookie-parser";
 import express from "express";
+import { PERMISSIONS } from "@alma/shared";
 import { errorHandler } from "./http/error-handler.js";
 import { attachAuthUser } from "./http/request-context.js";
+import {
+  requireAuth,
+  requirePermission,
+} from "./http/require-auth.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 
 export const app = express();
@@ -15,5 +20,12 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+
+app.get(
+  "/api/internal/admin-check",
+  requireAuth,
+  requirePermission(PERMISSIONS.ADMIN_ACCESS),
+  (_req, res) => res.sendStatus(204),
+);
 
 app.use(errorHandler);
