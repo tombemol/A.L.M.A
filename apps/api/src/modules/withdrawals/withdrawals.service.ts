@@ -1,8 +1,11 @@
 import { Prisma, prisma } from "@alma/database";
 import { DomainError } from "@alma/shared";
+import { postInventoryMovementInTx } from "../inventory/inventory-ledger.service.js";
 import {
   createWithdrawalRequestSchema,
+  fulfillWithdrawalRequestSchema,
   type CreateWithdrawalRequestInput,
+  type FulfillWithdrawalRequestInput,
 } from "./withdrawals.schemas.js";
 
 function notFound(message: string) {
@@ -11,6 +14,14 @@ function notFound(message: string) {
 
 function invalidDestination(message: string) {
   return new DomainError("INVALID_WITHDRAWAL_DESTINATION", 400, message);
+}
+
+function concurrentStockUpdate() {
+  return new DomainError(
+    "CONCURRENT_STOCK_UPDATE",
+    409,
+    "O estoque foi alterado por outra operação. Tente novamente",
+  );
 }
 
 export async function createWithdrawalRequest(
@@ -218,4 +229,108 @@ export function rejectWithdrawalRequest(
     "REJECTED",
     comment,
   );
+}
+
+export async function fulfillWithdrawalRequest(
+  fulfilledByUserId: string,
+  requestId: string,
+  input: FulfillWithdrawalRequestInput,
+) {
+  const parsed = fulfillWithdrawalRequestSchema.parse(input);
+
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const actor = await tx.user.findFirst({
+          where: { id: fulfilledByUserId, active: true },
+          select: { id: true },
+        });
+        if (!actor) throw notFound("Almoxarife não encontrado ou inativo");
+
+        const existing = await tx.withdrawalRequest.findUnique({
+          where: { id: requestId },
+        });
+        if (!existing) throw notFound("Solicitação de retirada não encontrada");
+
+        if (existing.status === "FULFILLED") {
+          if (!existing.stockMovementId) {
+            throw new DomainError(
+              "WITHDRAWAL_HISTORY_INCONSISTENT",
+              409,
+              "A retirada está concluída sem movimentação de estoque associada",
+            );
+          }
+          const movement = await tx.stockMovement.findUnique({
+            where: { id: existing.stockMovementId },
+            include: { items: true },
+          });
+          if (!movement) {
+            throw new DomainError(
+              "WITHDRAWAL_HISTORY_INCONSISTENT",
+              409,
+              "A movimentação associada à retirada não foi encontrada",
+            );
+          }
+          return { request: existing, movement };
+        }
+
+        if (existing.status !== "APPROVED") {
+          throw new DomainError(
+            "WITHDRAWAL_NOT_APPROVED",
+            409,
+            "Somente solicitações aprovadas podem ser atendidas",
+            { currentStatus: existing.status },
+          );
+        }
+
+        const claimed = await tx.withdrawalRequest.updateMany({
+          where: { id: requestId, status: "APPROVED" },
+          data: { status: "FULFILLING" },
+        });
+        if (claimed.count !== 1) {
+          throw new DomainError(
+            "WITHDRAWAL_FULFILLMENT_CONFLICT",
+            409,
+            "A solicitação está sendo atendida por outra operação",
+          );
+        }
+
+        const { movement } = await postInventoryMovementInTx(
+          tx,
+          fulfilledByUserId,
+          {
+            type: "WITHDRAWAL",
+            productId: existing.productId,
+            fromLocationId: parsed.fromLocationId,
+            quantity: existing.quantity.toString(),
+            reference: `WITHDRAWAL:${existing.id}`,
+            ...(parsed.tracking ? { tracking: parsed.tracking } : {}),
+          },
+        );
+
+        const request = await tx.withdrawalRequest.update({
+          where: { id: requestId },
+          data: {
+            status: "FULFILLED",
+            stockMovementId: movement.id,
+            fulfilledByUserId,
+            fulfilledAt: new Date(),
+            fromLocationId: parsed.fromLocationId,
+          },
+        });
+
+        return { request, movement };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (error instanceof DomainError) throw error;
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      throw concurrentStockUpdate();
+    }
+    throw error;
+  }
 }
