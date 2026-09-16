@@ -39,7 +39,6 @@ export async function upsertReorderPolicy(
     throw new DomainError("PRODUCT_NOT_FOUND", 404, "Produto não encontrado");
   }
 
-  const before = await prisma.reorderPolicy.findUnique({ where: { productId } });
   const data = {
     minimumStock: decimal(input.minimumStock),
     maximumStock: decimal(input.maximumStock),
@@ -48,6 +47,7 @@ export async function upsertReorderPolicy(
   };
 
   return prisma.$transaction(async (tx) => {
+    const before = await tx.reorderPolicy.findUnique({ where: { productId } });
     const policy = await tx.reorderPolicy.upsert({
       where: { productId },
       update: data,
@@ -255,7 +255,7 @@ export async function evaluateAlerts(options?: {
           data: {
             severity: alert.severity,
             message: alert.message,
-            details: alert.details,
+            ...(alert.details !== undefined ? { details: alert.details } : {}),
             lastDetectedAt: now,
           },
         });
