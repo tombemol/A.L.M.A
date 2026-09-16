@@ -8,6 +8,8 @@ export const PERMISSIONS = {
   CATALOG_MANAGE: "catalog.manage",
   LOCATIONS_READ: "locations.read",
   LOCATIONS_MANAGE: "locations.manage",
+  INVENTORY_READ: "inventory.read",
+  INVENTORY_MOVE: "inventory.move",
 } as const;
 
 export type PermissionCode =

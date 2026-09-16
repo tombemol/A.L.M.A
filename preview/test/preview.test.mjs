@@ -8,12 +8,26 @@ async function text(name) {
   return readFile(new URL(name, root), "utf8");
 }
 
-test("a demonstração expõe as quatro áreas principais do tablet", async () => {
+test("a demonstração expõe as cinco áreas principais do tablet", async () => {
   const html = await text("index.html");
 
-  for (const view of ["dashboard", "products", "locations", "scanner"]) {
+  for (const view of ["dashboard", "products", "locations", "inventory", "scanner"]) {
     assert.match(html, new RegExp(`data-view=\\"${view}\\"`));
   }
+});
+
+test("a área de estoque apresenta os conceitos concluídos na Fase 1C", async () => {
+  const html = await text("index.html");
+  const js = await text("app.js");
+
+  assert.match(html, />Estoque</);
+  assert.match(html, /data-view="inventory"/);
+  assert.match(html, /Movimentações recentes/);
+  assert.match(js, /Saldo total/);
+  assert.match(js, /Valor estimado/);
+  assert.match(js, /Custo médio/);
+  assert.match(js, /LOTE-2026-09/);
+  assert.match(js, /SER-ALMA-001/);
 });
 
 test("a demonstração referencia os arquivos locais de estilo e comportamento", async () => {
@@ -26,6 +40,7 @@ test("o CSS do tablet mantém navegação compacta e alvos de toque adequados", 
   const css = await text("styles.css");
   assert.match(css, /@media\s*\(max-width:\s*820px\)/);
   assert.match(css, /min-height:\s*44px/);
+  assert.match(css, /grid-template-columns:\s*repeat\(5,1fr\)/);
 });
 
 test("o leitor de demonstração inclui identificadores diferentes", async () => {
@@ -52,7 +67,7 @@ test("toda a cópia principal da demonstração está apresentada em pt-BR", asy
   assert.match(js, /Leitor de materiais/);
 });
 
-test("o README apresenta arquitetura, roadmap e demonstração de forma visual", async () => {
+test("o README fecha a Fase 1C e aponta a Fase 1D como próxima", async () => {
   const readme = await text("../README.md");
 
   assert.match(readme, /## 🧭 Visão geral/);
@@ -61,7 +76,10 @@ test("o README apresenta arquitetura, roadmap e demonstração de forma visual",
   assert.match(readme, /## 🗺️ Roadmap/);
   assert.match(readme, /Fase 1A.*Concluída/);
   assert.match(readme, /Fase 1B.*Concluída/);
-  assert.match(readme, /Fase 1C.*Próxima/);
+  assert.match(readme, /Fase 1C.*Concluída/);
+  assert.match(readme, /Fase 1D.*Próxima/);
+  assert.match(readme, /GET  \/api\/inventory\/balances/);
+  assert.match(readme, /POST \/api\/inventory\/transfers/);
   assert.match(readme, /https:\/\/tombemol\.github\.io\/A\.L\.M\.A\.\//);
   assert.match(readme, /Demonstração para tablet/);
 });

@@ -28,18 +28,38 @@ enum OccupancyMode {
   SHARED
 }
 
+enum InventoryTrackingMode {
+  NONE
+  LOT
+  LOT_EXPIRY
+  SERIAL
+  SERIAL_EXPIRY
+}
+
+enum StockMovementType {
+  ENTRY
+  WITHDRAWAL
+  RETURN
+  TRANSFER
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  INVENTORY_GAIN
+  INVENTORY_LOSS
+}
+
 model User {
-  id           String        @id @default(cuid())
-  employeeCode String?       @unique
-  username     String?       @unique
-  displayName  String
-  pinHash      String?
-  passwordHash String?
-  active       Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  roles        UserRole[]
-  sessions     AuthSession[]
+  id             String          @id @default(cuid())
+  employeeCode   String?         @unique
+  username       String?         @unique
+  displayName    String
+  pinHash        String?
+  passwordHash   String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  roles          UserRole[]
+  sessions       AuthSession[]
+  stockMovements StockMovement[]
 }
 
 model Role {
@@ -119,24 +139,31 @@ model UnitOfMeasure {
 }
 
 model Product {
-  id           String                  @id @default(cuid())
-  sku          String                  @unique
-  name         String
-  description  String?
-  categoryId   String
-  baseUnitId   String
-  manufacturer String?
-  active       Boolean                 @default(true)
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
-  category     Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  baseUnit     UnitOfMeasure           @relation("ProductBaseUnit", fields: [baseUnitId], references: [id], onDelete: Restrict)
-  identifiers  ProductIdentifier[]
-  conversions  ProductUnitConversion[]
-  locations    ProductLocation[]
+  id                 String                  @id @default(cuid())
+  sku                String                  @unique
+  name               String
+  description        String?
+  categoryId         String
+  baseUnitId         String
+  manufacturer       String?
+  trackingMode       InventoryTrackingMode   @default(NONE)
+  active             Boolean                 @default(true)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  category           Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  baseUnit           UnitOfMeasure           @relation("ProductBaseUnit", fields: [baseUnitId], references: [id], onDelete: Restrict)
+  identifiers        ProductIdentifier[]
+  conversions        ProductUnitConversion[]
+  locations          ProductLocation[]
+  inventoryLots      InventoryLot[]
+  serialItems        SerialItem[]
+  inventoryBalances  InventoryBalance[]
+  inventoryValuation InventoryValuation?
+  stockMovementItems StockMovementItem[]
 
   @@index([categoryId])
   @@index([baseUnitId])
+  @@index([trackingMode])
 }
 
 model ProductIdentifier {
@@ -177,20 +204,23 @@ model Warehouse {
 }
 
 model StorageLocation {
-  id               String              @id @default(cuid())
-  warehouseId      String
-  parentId         String?
-  kind             StorageLocationKind
-  code             String
-  name             String?
-  occupancyMode    OccupancyMode?
-  active           Boolean             @default(true)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  warehouse        Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  parent           StorageLocation?    @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children         StorageLocation[]   @relation("StorageLocationTree")
-  productLocations ProductLocation[]
+  id                    String              @id @default(cuid())
+  warehouseId           String
+  parentId              String?
+  kind                  StorageLocationKind
+  code                  String
+  name                  String?
+  occupancyMode         OccupancyMode?
+  active                Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  warehouse             Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  parent                StorageLocation?    @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children              StorageLocation[]   @relation("StorageLocationTree")
+  productLocations      ProductLocation[]
+  inventoryBalances     InventoryBalance[]
+  stockMovementItemsFrom StockMovementItem[] @relation("MovementFromLocation")
+  stockMovementItemsTo   StockMovementItem[] @relation("MovementToLocation")
 
   @@unique([warehouseId, code])
   @@index([warehouseId, kind])
@@ -213,4 +243,102 @@ model ProductLocation {
   @@index([productId, warehouseId])
   @@index([warehouseId])
   @@index([locationId])
+}
+
+model InventoryLot {
+  id            String              @id @default(cuid())
+  productId     String
+  lotCode       String
+  expiresAt     DateTime?
+  createdAt     DateTime            @default(now())
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  balances      InventoryBalance[]
+  movementItems StockMovementItem[]
+
+  @@unique([productId, lotCode])
+  @@index([expiresAt])
+}
+
+model SerialItem {
+  id            String              @id @default(cuid())
+  productId     String
+  serialNumber  String
+  expiresAt     DateTime?
+  createdAt     DateTime            @default(now())
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  balances      InventoryBalance[]
+  movementItems StockMovementItem[]
+
+  @@unique([productId, serialNumber])
+  @@index([expiresAt])
+}
+
+model InventoryBalance {
+  id           String          @id @default(cuid())
+  productId    String
+  locationId   String
+  lotId        String?
+  serialItemId String?
+  stockKey     String
+  quantity     Decimal         @default(0) @db.Decimal(18, 6)
+  updatedAt    DateTime        @updatedAt
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  location     StorageLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  lot          InventoryLot?   @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  serialItem   SerialItem?     @relation(fields: [serialItemId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, locationId, stockKey])
+  @@index([productId, locationId])
+  @@index([lotId])
+  @@index([serialItemId])
+}
+
+model InventoryValuation {
+  productId       String   @id
+  quantity        Decimal  @default(0) @db.Decimal(18, 6)
+  averageUnitCost Decimal  @default(0) @db.Decimal(18, 6)
+  totalValue      Decimal  @default(0) @db.Decimal(18, 6)
+  updatedAt       DateTime @updatedAt
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+model StockMovement {
+  id                String             @id @default(cuid())
+  type              StockMovementType
+  reason            String?
+  reference         String?
+  performedByUserId String?
+  createdAt         DateTime           @default(now())
+  performedBy       User?              @relation(fields: [performedByUserId], references: [id], onDelete: Restrict)
+  items             StockMovementItem[]
+
+  @@index([type, createdAt])
+  @@index([performedByUserId])
+}
+
+model StockMovementItem {
+  id             String           @id @default(cuid())
+  movementId     String
+  productId      String
+  fromLocationId String?
+  toLocationId   String?
+  lotId          String?
+  serialItemId   String?
+  quantity       Decimal          @db.Decimal(18, 6)
+  unitCost       Decimal?         @db.Decimal(18, 6)
+  totalCost      Decimal?         @db.Decimal(18, 6)
+  createdAt      DateTime         @default(now())
+  movement       StockMovement    @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  product        Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  fromLocation   StorageLocation? @relation("MovementFromLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocation     StorageLocation? @relation("MovementToLocation", fields: [toLocationId], references: [id], onDelete: Restrict)
+  lot            InventoryLot?    @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  serialItem     SerialItem?      @relation(fields: [serialItemId], references: [id], onDelete: Restrict)
+
+  @@index([movementId])
+  @@index([productId, createdAt])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@index([lotId])
+  @@index([serialItemId])
 }
