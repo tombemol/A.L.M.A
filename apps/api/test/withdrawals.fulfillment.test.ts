@@ -120,8 +120,8 @@ describe("atendimento de retiradas", () => {
     expect(first.request.fulfilledByUserId).toBe(fulfillerUserId);
     expect(first.request.stockMovementId).toBe(first.movement.id);
     expect(first.movement.type).toBe("WITHDRAWAL");
-    expect(first.movement.items[0]?.unitCost.toString()).toBe("10");
-    expect(first.movement.items[0]?.totalCost.toString()).toBe("20");
+    expect(first.movement.items[0]?.unitCost?.toString()).toBe("10");
+    expect(first.movement.items[0]?.totalCost?.toString()).toBe("20");
     expect(second.movement.id).toBe(first.movement.id);
 
     const balance = await prisma.inventoryBalance.findUniqueOrThrow({
