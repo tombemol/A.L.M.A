@@ -116,5 +116,19 @@ export const postInventoryMovementSchema = z
     }
   });
 
+export const inventoryBalancesQuerySchema = z.object({
+  productId: z.string().min(1).optional(),
+  locationId: z.string().min(1).optional(),
+  warehouseId: z.string().min(1).optional(),
+});
+
+export const inventoryMovementsQuerySchema = z.object({
+  productId: z.string().min(1).optional(),
+  type: stockMovementTypeSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 export type PostInventoryMovementInput = z.input<typeof postInventoryMovementSchema>;
 export type ParsedInventoryMovementInput = z.output<typeof postInventoryMovementSchema>;
+export type InventoryBalancesQuery = z.output<typeof inventoryBalancesQuerySchema>;
+export type InventoryMovementsQuery = z.output<typeof inventoryMovementsQuerySchema>;
