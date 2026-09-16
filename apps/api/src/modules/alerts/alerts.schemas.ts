@@ -6,6 +6,10 @@ const decimalString = z
   .refine((value) => value.length > 0 && !Number.isNaN(Number(value)), "Valor numérico inválido")
   .refine((value) => Number(value) >= 0, "Valor não pode ser negativo");
 
+const booleanQuery = z
+  .enum(["true", "false"])
+  .transform((value) => value === "true");
+
 export const productIdParamSchema = z.object({
   productId: z.string().trim().min(1),
 });
@@ -35,7 +39,7 @@ export const alertListQuerySchema = z.object({
   productId: z.string().trim().min(1).optional(),
   type: z.enum(["REORDER", "BELOW_MINIMUM", "STOCKOUT", "EXPIRY_NEAR", "EXPIRED", "FRAGMENTATION"]).optional(),
   severity: z.enum(["INFO", "WARNING", "CRITICAL"]).optional(),
-  active: z.coerce.boolean().optional(),
+  active: booleanQuery.optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
