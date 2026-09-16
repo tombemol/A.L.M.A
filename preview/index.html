@@ -21,6 +21,7 @@
         <button class="nav-item is-active" data-nav="dashboard" type="button"><span class="nav-icon" aria-hidden="true">⌂</span><span>Visão geral</span></button>
         <button class="nav-item" data-nav="products" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Produtos</span></button>
         <button class="nav-item" data-nav="locations" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>Localizações</span></button>
+        <button class="nav-item" data-nav="inventory" type="button"><span class="nav-icon" aria-hidden="true">▤</span><span>Estoque</span></button>
         <button class="nav-item" data-nav="scanner" type="button"><span class="nav-icon" aria-hidden="true">▣</span><span>Leitor</span></button>
       </nav>
       <div class="rail-footer"><div class="user-badge">AD</div><div><strong>Administrador de demonstração</strong><span>Modo de demonstração</span></div></div>
@@ -37,7 +38,7 @@
 
       <section class="view is-active" data-view="dashboard">
         <div class="hero-card">
-          <div><span class="status-pill live">DEMONSTRAÇÃO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
+          <div><span class="status-pill live">DEMONSTRAÇÃO ATIVA</span><h2>Controle físico sem adivinhação.</h2><p>Veja materiais, endereços, saldos e leituras simuladas em um painel pensado para uso com luvas, pressa e um tablet na mão.</p></div>
           <button class="primary-action" type="button" data-nav="scanner">Abrir leitor</button>
         </div>
         <div class="kpi-grid" id="kpi-grid" aria-label="Indicadores principais"></div>
@@ -51,7 +52,7 @@
             <div class="alert-stack">
               <article class="alert-card warning"><span class="alert-dot"></span><div><strong>Reposição futura</strong><small>4 itens próximos do ponto de reposição.</small></div></article>
               <article class="alert-card info"><span class="alert-dot"></span><div><strong>Posição compartilhada</strong><small>C/E02/P01/03 possui 3 materiais associados.</small></div></article>
-              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Estrutura íntegra</strong><small>Todos os endereços da demonstração possuem caminho válido.</small></div></article>
+              <article class="alert-card success"><span class="alert-dot"></span><div><strong>Ledger íntegro</strong><small>Movimentações e saldos da Fase 1C são tratados transacionalmente no backend.</small></div></article>
             </div>
           </section>
         </div>
@@ -81,6 +82,25 @@
         <div class="location-grid" id="location-grid"></div>
       </section>
 
+      <section class="view" data-view="inventory" hidden>
+        <div class="section-toolbar inventory-toolbar">
+          <div><span class="eyebrow">Fase 1C · Estoque transacional</span><h2>Estoque por posição</h2></div>
+          <span class="status-pill">DADOS SIMULADOS</span>
+        </div>
+        <div class="inventory-summary" id="inventory-summary" aria-label="Resumo do estoque"></div>
+        <div class="inventory-grid">
+          <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Saldo físico</span><h3>Saldos por posição</h3></div></div>
+            <div id="inventory-balances" class="inventory-balance-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Ledger</span><h3>Movimentações recentes</h3></div></div>
+            <div id="inventory-movements" class="movement-list"></div>
+          </section>
+        </div>
+        <p class="demo-note">Esta tela usa dados simulados apenas para a demonstração visual. O backend da Fase 1C já possui ledger imutável, saldos por posição, transferências atômicas, rastreabilidade e custo médio.</p>
+      </section>
+
       <section class="view" data-view="scanner" hidden>
         <div class="scanner-layout">
           <section class="scanner-stage panel">
@@ -101,6 +121,7 @@
       <button class="nav-item is-active" data-nav="dashboard" type="button"><span aria-hidden="true">⌂</span><small>Início</small></button>
       <button class="nav-item" data-nav="products" type="button"><span aria-hidden="true">▦</span><small>Produtos</small></button>
       <button class="nav-item" data-nav="locations" type="button"><span aria-hidden="true">⌖</span><small>Locais</small></button>
+      <button class="nav-item" data-nav="inventory" type="button"><span aria-hidden="true">▤</span><small>Estoque</small></button>
       <button class="nav-item" data-nav="scanner" type="button"><span aria-hidden="true">▣</span><small>Leitor</small></button>
     </nav>
   </div>
